@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Personal Chief</title>
+  <meta name="description" content="AI personal chef assistant">
+  <style>
+    :root {
+      --bg: #f8f5ef;
+      --panel: #fff;
+      --panel-soft: #f1eee7;
+      --text: #24221f;
+      --muted: #6f6a62;
+      --line: #ddd5c8;
+      --primary: #2f7d68;
+      --primary-strong: #226251;
+      --danger: #b44747;
+      --shadow: 0 18px 55px rgba(49, 45, 37, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body {
+      background: linear-gradient(135deg, rgba(47, 125, 104, 0.08), rgba(200, 95, 52, 0.08)), var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      height: 100dvh;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 14px;
+      gap: 12px;
+    }
+
+    .topbar,
+    .sidebar,
+    .chat,
+    .composer {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(221, 213, 200, 0.9);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      border-radius: 8px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 14px;
+      min-height: 68px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      background: var(--primary);
+      color: #fff;
+      flex: 0 0 auto;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    .brand p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .toolbar,
+    .sidebar-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .sidebar-head {
+      justify-content: space-between;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .sidebar-title {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .thread-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .thread-item {
+      width: 100%;
+      display: grid;
+      gap: 4px;
+      text-align: left;
+      padding: 10px;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid transparent;
+    }
+
+    .thread-item:hover,
+    .thread-item.active {
+      background: var(--panel-soft);
+      border-color: var(--line);
+    }
+
+    .thread-item strong {
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .thread-item span {
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .chat {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .messages {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 18px;
+      scroll-behavior: smooth;
+    }
+
+    .empty {
+      height: 100%;
+      min-height: 260px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty strong {
+      display: block;
+      color: var(--text);
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .message {
+      display: grid;
+      gap: 8px;
+      margin: 0 0 18px;
+    }
+
+    .message.user {
+      justify-items: end;
+    }
+
+    .bubble {
+      max-width: min(760px, 92%);
+      border-radius: 8px;
+      padding: 12px 14px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .user .bubble {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .assistant .bubble {
+      background: #fffdf9;
+    }
+
+    .meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .preview {
+      max-width: 220px;
+      max-height: 180px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      display: block;
+    }
+
+    .composer {
+      padding: 12px;
+      flex: 0 0 auto;
+    }
+
+    .selected-file {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--panel-soft);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .selected-file.active {
+      display: flex;
+    }
+
+    .composer-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      align-items: end;
+      gap: 10px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 44px;
+      max-height: 132px;
+      resize: none;
+      padding: 11px 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      outline: none;
+      background: #fff;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(47, 125, 104, 0.14);
+    }
+
+    .icon-button,
+    .text-button,
+    .send,
+    .stop {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 40px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      transition: background 0.16s ease, border-color 0.16s ease;
+    }
+
+    .icon-button {
+      width: 40px;
+      background: var(--panel-soft);
+      color: var(--text);
+      flex: 0 0 auto;
+    }
+
+    .text-button {
+      gap: 8px;
+      padding: 0 13px;
+      background: var(--panel-soft);
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .icon-button:hover,
+    .text-button:hover {
+      background: #e8e2d6;
+      border-color: #cfc4b5;
+    }
+
+    .send,
+    .stop {
+      width: 44px;
+      height: 44px;
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .send {
+      background: var(--primary);
+    }
+
+    .send:hover {
+      background: var(--primary-strong);
+    }
+
+    .stop {
+      display: none;
+      background: var(--danger);
+    }
+
+    .stop.active {
+      display: inline-flex;
+    }
+
+    .send.hidden {
+      display: none;
+    }
+
+    .status {
+      min-height: 18px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        padding: 10px;
+        gap: 10px;
+      }
+
+      .topbar {
+        min-height: 58px;
+      }
+
+      .brand p {
+        display: none;
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
+        grid-template-rows: 136px minmax(0, 1fr);
+      }
+
+      .thread-list {
+        display: flex;
+        overflow-x: auto;
+        overflow-y: hidden;
+        gap: 8px;
+      }
+
+      .thread-item {
+        min-width: 180px;
+      }
+
+      .text-button span {
+        display: none;
+      }
+
+      .text-button {
+        width: 40px;
+        padding: 0;
+      }
+
+      .messages {
+        padding: 12px;
+      }
+
+      .bubble {
+        max-width: 96%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.46.32-.84.73-1.04A4 4 0 0 0 16.6 6a5 5 0 0 0-9.2 0 4 4 0 0 0-2.13 7.61c.41.2.73.58.73 1.04V20a1 1 0 0 0 1 1Z"></path><path d="M6 17h12"></path></svg>
+        </div>
+        <div>
+          <h1>&#65;&#73;&#32;&#31169;&#20154;&#21416;&#24072;</h1>
+          <p>&#35782;&#21035;&#39135;&#26448;&#65292;&#29983;&#25104;&#21487;&#25191;&#34892;&#30340;&#33756;&#35889;&#24314;&#35758;</p>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button class="text-button" id="new-chat" type="button" title="New chat">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+          <span>&#26032;&#24314;&#20250;&#35805;</span>
+        </button>
+        <button class="icon-button" id="clear-chat" type="button" title="Clear current chat">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>
+          <span class="sr-only">Clear current chat</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <aside class="sidebar" aria-label="Conversation history">
+        <div class="sidebar-head">
+          <div class="sidebar-title">&#21382;&#21490;&#23545;&#35805;</div>
+          <button class="icon-button" id="refresh-history" type="button" title="Refresh history">
+            <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.2 6.5"></path><path d="M3 12A9 9 0 0 1 18.2 5.5"></path><path d="M3 18v-5h5"></path><path d="M21 6v5h-5"></path></svg>
+            <span class="sr-only">Refresh history</span>
+          </button>
+        </div>
+        <div class="thread-list" id="thread-list"></div>
+      </aside>
+
+      <section class="chat" aria-live="polite">
+        <div class="messages" id="messages">
+          <div class="empty" id="empty-state">
+            <div>
+              <strong>&#20170;&#22825;&#24819;&#21507;&#28857;&#20160;&#20040;&#65311;</strong>
+              <span>&#19978;&#20256;&#20912;&#31665;&#29031;&#29255;&#25110;&#36755;&#20837;&#39135;&#26448;&#28165;&#21333;&#65292;&#25105;&#26469;&#32473;&#20320;&#37197;&#33756;&#12290;</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="composer">
+      <div class="selected-file" id="selected-file">
+        <span id="file-name"></span>
+        <button class="icon-button" id="remove-file" type="button" title="Remove image">
+          <svg viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          <span class="sr-only">Remove image</span>
+        </button>
+      </div>
+      <div class="composer-row">
+        <input id="image-input" class="sr-only" type="file" accept="image/*">
+        <button class="icon-button" id="pick-image" type="button" title="Choose image">
+          <svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.2-3.2a2 2 0 0 0-2.8 0L6 21"></path></svg>
+          <span class="sr-only">Choose image</span>
+        </button>
+        <textarea id="message-input" rows="1" placeholder="&#36755;&#20837;&#39135;&#26448;&#12289;&#21475;&#21619;&#12289;&#24524;&#21475;&#25110;&#29992;&#39184;&#20154;&#25968;"></textarea>
+        <button class="send" id="send" type="button" title="Send">
+          <svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>
+          <span class="sr-only">Send</span>
+        </button>
+        <button class="stop" id="stop" type="button" title="Stop">
+          <svg viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"></rect></svg>
+          <span class="sr-only">Stop</span>
+        </button>
+      </div>
+      <div class="status" id="status"></div>
+    </section>
+  </main>
+
+  <script>
+    const LABELS = {
+      you: "\u4f60",
+      assistant: "AI \u79c1\u4eba\u53a8\u5e08",
+      untitled: "\u65b0\u5bf9\u8bdd",
+      empty: "\u6682\u65e0\u5185\u5bb9",
+      uploadPreparing: "\u6b63\u5728\u51c6\u5907\u56fe\u7247\u4e0a\u4f20...",
+      uploadFailedUrl: "\u56fe\u7247\u4e0a\u4f20\u5730\u5740\u751f\u6210\u5931\u8d25",
+      uploading: "\u6b63\u5728\u4e0a\u4f20\u56fe\u7247...",
+      uploadFailed: "\u56fe\u7247\u4e0a\u4f20\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5 OSS \u914d\u7f6e\u6216\u7f51\u7edc\u72b6\u6001",
+      needInput: "\u8bf7\u8f93\u5165\u98df\u6750\uff0c\u6216\u5148\u9009\u62e9\u4e00\u5f20\u56fe\u7247\u3002",
+      imagePrompt: "\u8bf7\u6839\u636e\u8fd9\u5f20\u56fe\u7247\u63a8\u8350\u83dc\u8c31\u3002",
+      generating: "\u6b63\u5728\u68c0\u7d22\u83dc\u8c31\u5e76\u751f\u6210\u5efa\u8bae...",
+      requestFailed: "\u5bf9\u8bdd\u8bf7\u6c42\u5931\u8d25",
+      stopped: "\u5df2\u505c\u6b62\u751f\u6210\u3002",
+      genericFailed: "\u8bf7\u6c42\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002",
+      imageAlt: "\u5df2\u9009\u62e9\u7684\u98df\u6750\u56fe\u7247",
+      loadingHistory: "\u6b63\u5728\u8bfb\u53d6\u5386\u53f2\u5bf9\u8bdd..."
+    };
+
+    const THREADS_KEY = "personal-chief-threads";
+    const CURRENT_THREAD_KEY = "personal-chief-thread-id";
+
+    const messagesEl = document.querySelector("#messages");
+    const emptyState = document.querySelector("#empty-state");
+    const threadListEl = document.querySelector("#thread-list");
+    const imageInput = document.querySelector("#image-input");
+    const pickImageBtn = document.querySelector("#pick-image");
+    const removeFileBtn = document.querySelector("#remove-file");
+    const selectedFileEl = document.querySelector("#selected-file");
+    const fileNameEl = document.querySelector("#file-name");
+    const messageInput = document.querySelector("#message-input");
+    const sendBtn = document.querySelector("#send");
+    const stopBtn = document.querySelector("#stop");
+    const statusEl = document.querySelector("#status");
+    const newChatBtn = document.querySelector("#new-chat");
+    const clearChatBtn = document.querySelector("#clear-chat");
+    const refreshHistoryBtn = document.querySelector("#refresh-history");
+
+    let selectedFile = null;
+    let abortController = null;
+    let threads = loadThreads();
+    let threadId = localStorage.getItem(CURRENT_THREAD_KEY) || "";
+
+    if (!threadId || !threads.some((thread) => thread.id === threadId)) {
+      threadId = createThreadId();
+      threads.unshift(createThread(threadId));
+      saveThreads();
+    }
+
+    localStorage.setItem(CURRENT_THREAD_KEY, threadId);
+    renderThreadList();
+    loadThreadMessages(threadId);
+
+    function createThreadId() {
+      return `web-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function createThread(id) {
+      return {
+        id,
+        title: LABELS.untitled,
+        lastMessage: LABELS.empty,
+        updatedAt: Date.now()
+      };
+    }
+
+    function loadThreads() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(THREADS_KEY) || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveThreads() {
+      threads.sort((a, b) => b.updatedAt - a.updatedAt);
+      localStorage.setItem(THREADS_KEY, JSON.stringify(threads.slice(0, 40)));
+    }
+
+    function getCurrentThread() {
+      let thread = threads.find((item) => item.id === threadId);
+      if (!thread) {
+        thread = createThread(threadId);
+        threads.unshift(thread);
+      }
+      return thread;
+    }
+
+    function updateCurrentThread(message) {
+      const thread = getCurrentThread();
+      const cleanMessage = (message || "").trim();
+      if (thread.title === LABELS.untitled && cleanMessage) {
+        thread.title = cleanMessage.slice(0, 24);
+      }
+      thread.lastMessage = cleanMessage.slice(0, 48) || LABELS.empty;
+      thread.updatedAt = Date.now();
+      saveThreads();
+      renderThreadList();
+    }
+
+    function renderThreadList() {
+      threadListEl.innerHTML = "";
+      for (const thread of threads) {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = `thread-item${thread.id === threadId ? " active" : ""}`;
+        item.dataset.threadId = thread.id;
+
+        const title = document.createElement("strong");
+        title.textContent = thread.title || LABELS.untitled;
+
+        const summary = document.createElement("span");
+        summary.textContent = thread.lastMessage || LABELS.empty;
+
+        item.append(title, summary);
+        threadListEl.appendChild(item);
+      }
+    }
+
+    function setStatus(message) {
+      statusEl.textContent = message || "";
+    }
+
+    function scrollToBottom() {
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function clearMessageArea() {
+      messagesEl.innerHTML = "";
+      messagesEl.appendChild(emptyState);
+      emptyState.style.display = "grid";
+    }
+
+    function ensureMessagesVisible() {
+      emptyState.style.display = "none";
+    }
+
+    function setBusy(isBusy) {
+      messageInput.disabled = isBusy;
+      pickImageBtn.disabled = isBusy;
+      sendBtn.disabled = isBusy;
+      clearChatBtn.disabled = isBusy;
+      refreshHistoryBtn.disabled = isBusy;
+      sendBtn.classList.toggle("hidden", isBusy);
+      stopBtn.classList.toggle("active", isBusy);
+    }
+
+    function normalizeContent(content) {
+      if (typeof content === "string") {
+        return content;
+      }
+      if (Array.isArray(content)) {
+        return content.map((part) => {
+          if (typeof part === "string") {
+            return part;
+          }
+          if (part && typeof part.text === "string") {
+            return part.text;
+          }
+          return "";
+        }).filter(Boolean).join("\n");
+      }
+      return "";
+    }
+
+    function appendMessage(role, text, imageUrl) {
+      ensureMessagesVisible();
+
+      const message = document.createElement("article");
+      message.className = `message ${role}`;
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = role === "user" ? LABELS.you : LABELS.assistant;
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = normalizeContent(text);
+
+      if (imageUrl) {
+        const image = document.createElement("img");
+        image.className = "preview";
+        image.src = imageUrl;
+        image.alt = LABELS.imageAlt;
+        message.append(meta, image, bubble);
+      } else {
+        message.append(meta, bubble);
+      }
+
+      messagesEl.appendChild(message);
+      scrollToBottom();
+      return bubble;
+    }
+
+    async function loadThreadMessages(id) {
+      clearMessageArea();
+      setStatus(LABELS.loadingHistory);
+      try {
+        const response = await fetch(`/api/v1/chat/messages?thread_id=${encodeURIComponent(id)}`);
+        if (!response.ok) {
+          throw new Error();
+        }
+        const payload = await response.json();
+        const messages = Array.isArray(payload.messages) ? payload.messages : [];
+        if (messages.length) {
+          clearMessageArea();
+          for (const msg of messages) {
+            appendMessage(msg.role === "user" ? "user" : "assistant", msg.content);
+          }
+        }
+      } catch {
+        // Local thread metadata is still useful even if the checkpoint is unavailable.
+      } finally {
+        setStatus("");
+      }
+    }
+
+    function updateSelectedFile(file) {
+      selectedFile = file;
+      if (!file) {
+        imageInput.value = "";
+        selectedFileEl.classList.remove("active");
+        fileNameEl.textContent = "";
+        return;
+      }
+
+      selectedFileEl.classList.add("active");
+      fileNameEl.textContent = file.name;
+    }
+
+    function resizeTextarea() {
+      messageInput.style.height = "auto";
+      messageInput.style.height = `${Math.min(messageInput.scrollHeight, 132)}px`;
+    }
+
+    async function uploadImage(file) {
+      setStatus(LABELS.uploadPreparing);
+      const presignUrl = `/api/v1/oss/presign?filename=${encodeURIComponent(file.name)}`;
+      const presignResponse = await fetch(presignUrl);
+      const presignPayload = await presignResponse.json().catch(() => ({}));
+
+      if (!presignResponse.ok) {
+        throw new Error(presignPayload.detail || LABELS.uploadFailedUrl);
+      }
+
+      setStatus(LABELS.uploading);
+      const uploadResponse = await fetch(presignPayload.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": presignPayload.contentType },
+        body: file
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(LABELS.uploadFailed);
+      }
+
+      return presignPayload.accessUrl;
+    }
+
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text && !selectedFile) {
+        setStatus(LABELS.needInput);
+        return;
+      }
+
+      setBusy(true);
+      abortController = new AbortController();
+
+      const fileForMessage = selectedFile;
+      const localPreview = fileForMessage ? URL.createObjectURL(fileForMessage) : "";
+      const userText = text || LABELS.imagePrompt;
+      appendMessage("user", userText, localPreview);
+      updateCurrentThread(userText);
+
+      messageInput.value = "";
+      resizeTextarea();
+      updateSelectedFile(null);
+
+      const assistantBubble = appendMessage("assistant", "");
+
+      try {
+        const imageUrl = fileForMessage ? await uploadImage(fileForMessage) : null;
+        setStatus(LABELS.generating);
+
+        const response = await fetch("/api/v1/chat/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: userText,
+            image_url: imageUrl,
+            thread_id: threadId
+          }),
+          signal: abortController.signal
+        });
+
+        if (!response.ok || !response.body) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.detail || LABELS.requestFailed);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            break;
+          }
+
+          assistantBubble.textContent += decoder.decode(value, { stream: true });
+          scrollToBottom();
+        }
+
+        assistantBubble.textContent += decoder.decode();
+        updateCurrentThread(assistantBubble.textContent);
+        setStatus("");
+      } catch (error) {
+        if (error.name === "AbortError") {
+          setStatus(LABELS.stopped);
+        } else {
+          assistantBubble.textContent = error.message || LABELS.genericFailed;
+          setStatus("");
+        }
+      } finally {
+        if (localPreview) {
+          URL.revokeObjectURL(localPreview);
+        }
+        abortController = null;
+        setBusy(false);
+        messageInput.focus();
+      }
+    }
+
+    async function clearCurrentChat() {
+      try {
+        await fetch(`/api/v1/chat/messages?thread_id=${encodeURIComponent(threadId)}`, { method: "DELETE" });
+      } catch {
+        // The local UI can still be cleared if the server-side history is unavailable.
+      }
+
+      const thread = getCurrentThread();
+      thread.lastMessage = LABELS.empty;
+      thread.updatedAt = Date.now();
+      saveThreads();
+      renderThreadList();
+      clearMessageArea();
+      setStatus("");
+    }
+
+    function startNewChat() {
+      threadId = createThreadId();
+      threads.unshift(createThread(threadId));
+      saveThreads();
+      localStorage.setItem(CURRENT_THREAD_KEY, threadId);
+      renderThreadList();
+      clearMessageArea();
+      setStatus("");
+      messageInput.focus();
+    }
+
+    pickImageBtn.addEventListener("click", () => imageInput.click());
+    removeFileBtn.addEventListener("click", () => updateSelectedFile(null));
+
+    imageInput.addEventListener("change", () => {
+      const [file] = imageInput.files;
+      updateSelectedFile(file || null);
+    });
+
+    messageInput.addEventListener("input", resizeTextarea);
+    messageInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+
+    threadListEl.addEventListener("click", (event) => {
+      const item = event.target.closest(".thread-item");
+      if (!item || abortController) {
+        return;
+      }
+
+      threadId = item.dataset.threadId;
+      localStorage.setItem(CURRENT_THREAD_KEY, threadId);
+      renderThreadList();
+      loadThreadMessages(threadId);
+    });
+
+    sendBtn.addEventListener("click", sendMessage);
+    stopBtn.addEventListener("click", () => {
+      if (abortController) {
+        abortController.abort();
+      }
+    });
+
+    newChatBtn.addEventListener("click", startNewChat);
+    clearChatBtn.addEventListener("click", clearCurrentChat);
+    refreshHistoryBtn.addEventListener("click", () => loadThreadMessages(threadId));
+  </script>
+</body>
+</html>
