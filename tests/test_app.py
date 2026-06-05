@@ -42,6 +42,61 @@ class AppSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
 
+    def test_chef_inventory_and_meal_plan(self):
+        thread_id = "test-chef-agent"
+        client.delete("/api/v1/chef/inventory", params={"thread_id": thread_id})
+
+        inventory_response = client.post(
+            "/api/v1/chef/inventory",
+            json={
+                "thread_id": thread_id,
+                "items": [
+                    {
+                        "name": "鸡蛋",
+                        "quantity": "6个",
+                        "category": "protein",
+                        "expires_on": "2026-06-04",
+                    },
+                    {
+                        "name": "番茄",
+                        "quantity": "3个",
+                        "category": "vegetable",
+                    },
+                ],
+            },
+        )
+
+        self.assertEqual(inventory_response.status_code, 200)
+        self.assertEqual(len(inventory_response.json()["items"]), 2)
+
+        preferences_response = client.post(
+            "/api/v1/chef/preferences",
+            json={
+                "thread_id": thread_id,
+                "preferences": {
+                    "dietary_goals": ["减脂"],
+                    "allergies": [],
+                    "disliked_ingredients": ["香菜"],
+                    "liked_flavors": ["清淡"],
+                    "budget_level": "normal",
+                    "cooking_time_minutes": 30,
+                },
+            },
+        )
+
+        self.assertEqual(preferences_response.status_code, 200)
+
+        plan_response = client.post(
+            "/api/v1/chef/meal-plan",
+            json={"thread_id": thread_id, "days": 2, "meals": ["dinner"], "people": 1},
+        )
+
+        self.assertEqual(plan_response.status_code, 200)
+        payload = plan_response.json()
+        self.assertEqual(payload["inventory_summary"]["total_items"], 2)
+        self.assertEqual(len(payload["days"]), 2)
+        self.assertIn("shopping_list", payload)
+
 
 if __name__ == "__main__":
     unittest.main()

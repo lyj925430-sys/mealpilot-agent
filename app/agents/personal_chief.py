@@ -10,6 +10,8 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 
 from app.common.logger import logger
 from app.core.settings import settings
+from app.models.schemas import MealPlanRequest
+from app.services.meal_planner import chef_memory_store, generate_meal_plan, inventory_context
 
 
 SYSTEM_PROMPT = """
@@ -29,6 +31,14 @@ SYSTEM_PROMPT = """
 
 CONFIG_ERROR_MESSAGE = "\u670d\u52a1\u914d\u7f6e\u4e0d\u5b8c\u6574\uff0c\u8bf7\u5148\u68c0\u67e5 DASHSCOPE_API_KEY \u548c BASE_URL\u3002"
 AGENT_ERROR_MESSAGE = "\u4fe1\u606f\u68c0\u7d22\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\uff0c\u6216\u8005\u5148\u624b\u52a8\u8f93\u5165\u98df\u6750\u6e05\u5355\u3002"
+
+SYSTEM_PROMPT += """
+
+Agent upgrade:
+- If the user asks for multi-day menus, inventory consumption, shopping lists, or what to eat this week, use kitchen_memory and meal_plan first.
+- Prefer ingredients that expire soon. Clearly separate ingredients already in the kitchen from ingredients that need to be bought.
+- Treat saved inventory and preferences as long-term kitchen memory for the current thread_id.
+"""
 
 
 def _create_checkpointer() -> SqliteSaver:
@@ -52,6 +62,19 @@ def web_search(query: str) -> Any:
     return search.invoke(query)
 
 
+@tool
+def kitchen_memory(thread_id: str) -> Any:
+    """Get saved inventory and cooking preferences for a conversation thread."""
+    snapshot = chef_memory_store.snapshot(thread_id)
+    return {"items": snapshot.items, "preferences": snapshot.preferences}
+
+
+@tool
+def meal_plan(thread_id: str, days: int = 3) -> Any:
+    """Create a multi-day meal plan from saved inventory and preferences."""
+    return generate_meal_plan(MealPlanRequest(thread_id=thread_id, days=days))
+
+
 def _create_agent():
     missing = []
     if not settings.llm_ready:
@@ -70,7 +93,7 @@ def _create_agent():
 
     return create_agent(
         model=model,
-        tools=[web_search],
+        tools=[web_search, kitchen_memory, meal_plan],
         checkpointer=checkpointer,
         system_prompt=SYSTEM_PROMPT,
     )
@@ -87,6 +110,10 @@ async def search_recipes(prompt: str, image: str | None, thread_id: str):
         return
 
     try:
+        context = inventory_context(thread_id)
+        if context:
+            prompt = f"当前 thread_id: {thread_id}\n{context}\n\n当前用户请求:\n{prompt}"
+
         if not image:
             message = HumanMessage(content=prompt)
         else:

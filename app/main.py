@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.v1 import chat, oss
+from app.api.v1 import chat, chef, oss
 from app.common.logger import setup_logging
 from app.core.settings import settings
 
@@ -27,6 +27,7 @@ app.add_middleware(
 )
 
 app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
+app.include_router(chef.router, prefix="/api/v1", tags=["chef"])
 app.include_router(oss.router, prefix="/api/v1", tags=["oss"])
 
 
@@ -40,6 +41,8 @@ async def health_check():
             "llm": settings.llm_ready,
             "search": settings.search_ready,
             "oss": settings.oss_ready,
+            "chef_memory": True,
+            "meal_plan": True,
         },
     }
 
