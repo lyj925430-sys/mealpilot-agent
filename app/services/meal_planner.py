@@ -5,7 +5,7 @@ import re
 import sqlite3
 from threading import RLock
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -119,8 +119,8 @@ class ChefMemoryStore:
 
     def upsert_inventory(self, thread_id: str, items: list[IngredientItem]) -> list[dict[str, Any]]:
         with self._lock:
-            now = datetime.now(UTC).isoformat(timespec="seconds")
-            today = datetime.now(UTC).date()
+            now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            today = datetime.now(timezone.utc).date()
             for item in items:
                 expires_on = _normalized_expires_on(item, today)
                 remaining_percent = _remaining_percent_from_notes(item.notes)
@@ -164,7 +164,7 @@ class ChefMemoryStore:
                 """,
                 (thread_id,),
             ).fetchall()
-            today = datetime.now(UTC).date()
+            today = datetime.now(timezone.utc).date()
             items = []
             for row in rows:
                 item = dict(row)
@@ -194,7 +194,7 @@ class ChefMemoryStore:
         recipe_name: str = "",
     ) -> dict[str, Any]:
         with self._lock:
-            now = datetime.now(UTC).isoformat(timespec="seconds")
+            now = datetime.now(timezone.utc).isoformat(timespec="seconds")
             consumed = []
             missing = []
             for item in items:
@@ -253,7 +253,7 @@ class ChefMemoryStore:
 
     def save_preferences(self, thread_id: str, preferences: UserPreferences) -> dict[str, Any]:
         with self._lock:
-            now = datetime.now(UTC).isoformat(timespec="seconds")
+            now = datetime.now(timezone.utc).isoformat(timespec="seconds")
             self._connection.execute(
                 """
                 INSERT INTO user_preferences
@@ -323,7 +323,7 @@ class ChefMemoryStore:
 
     def start_cooking_session(self, request: CookingSessionStartRequest) -> dict[str, Any]:
         with self._lock:
-            now = datetime.now(UTC).isoformat(timespec="seconds")
+            now = datetime.now(timezone.utc).isoformat(timespec="seconds")
             self._connection.execute(
                 """
                 INSERT INTO cooking_sessions
@@ -357,7 +357,7 @@ class ChefMemoryStore:
             elif action == "finish":
                 status = "finished"
 
-            now = datetime.now(UTC).isoformat(timespec="seconds")
+            now = datetime.now(timezone.utc).isoformat(timespec="seconds")
             self._connection.execute(
                 """
                 UPDATE cooking_sessions

@@ -5,7 +5,7 @@ import hmac
 import secrets
 import sqlite3
 from threading import RLock
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -110,7 +110,7 @@ class AuthStore:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid token")
 
             expires_at = datetime.fromisoformat(row["expires_at"])
-            if expires_at <= datetime.now(UTC):
+            if expires_at <= datetime.now(timezone.utc):
                 self.logout(token)
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token expired")
 
@@ -186,7 +186,7 @@ class AuthStore:
 
     def _create_session(self, user: dict[str, str]) -> dict[str, Any]:
         with self._lock:
-            now = datetime.now(UTC)
+            now = datetime.now(timezone.utc)
             token = secrets.token_urlsafe(32)
             expires_at = now + timedelta(days=7)
             self._connection.execute(
@@ -283,7 +283,7 @@ def _verify_password(password: str, salt: str, expected_hash: str) -> bool:
 
 
 def _now() -> str:
-    return datetime.now(UTC).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def _empty_profile() -> dict[str, Any]:
