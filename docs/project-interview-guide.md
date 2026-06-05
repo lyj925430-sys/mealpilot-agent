@@ -530,7 +530,7 @@ POST /api/v1/chef/meal-plan
 
 关键点是 Agent 的工具不是摆设，而是和真实业务状态连接的：
 
-- `web_search` 连接外部搜索。
+- `web_search` 连接外部搜索。·
 - `kitchen_memory` 连接 SQLite 厨房记忆。
 - `meal_plan` 连接确定性菜单规划服务。
 
@@ -791,3 +791,114 @@ uv run python -m unittest discover -s tests
 第二，它不是无状态问答，而是同时有 LangGraph 对话记忆和 SQLite 业务记忆。
 
 第三，它不是只推荐一道菜，而是围绕库存、偏好、临期食材和购物清单形成了一个完整的生活场景闭环。
+
+第四，它加入了轻量登录注册体系。用户注册登录后，前端会基于用户 id 生成独立 thread_id，后端使用 SQLite 保存用户、加盐密码哈希和 bearer token，使厨房记忆和对话状态具备用户隔离基础。
+
+## 16. 预定义工具升级
+
+这次工具升级的目标不是简单堆功能，而是补齐 Agent 从“推荐”到“执行”的闭环。
+
+新增工具可以分成四类：
+
+- 状态写入工具：`update_inventory`、`consume_inventory`
+- 决策辅助工具：`substitute_ingredient`、`estimate_meal_nutrition`
+- 执行陪跑工具：`start_cooking_steps`、`cooking_step`
+- 原有工具：`web_search`、`kitchen_memory`、`meal_plan`
+
+### 16.1 为什么要加库存写入和扣减
+
+原来的 Agent 可以读取库存，但如果用户说“我刚买了鸡胸肉”或者“番茄炒蛋已经做完了”，系统不能主动更新库存。
+
+新增后：
+
+```text
+用户说买了新食材
+  -> update_inventory
+  -> SQLite 库存更新
+
+用户确认做完一道菜
+  -> consume_inventory
+  -> 记录食材消耗
+  -> 必要时从库存删除
+```
+
+这里没有强行解析“6个”“300g”“半瓶”等复杂自然语言数量，因为这很容易产生假精确。当前设计更稳妥：记录消耗行为，如果食材完全用完，调用方可以传 `remove_from_inventory=true`。
+
+面试表达：
+
+> 我没有让 Agent 盲目修改库存数量，因为中文食材单位很复杂。当前实现采用保守策略：记录消耗日志，并支持明确删除已用完食材。这样保证状态更新可信，后续可以再引入单位解析模块。
+
+### 16.2 替代食材工具
+
+`substitute_ingredient` 用于解决做饭中常见的问题：用户缺少某个食材。
+
+它会结合：
+
+- 当前库存中已有的食材。
+- 用户过敏源。
+- 用户不喜欢的食材。
+- 预定义替代规则。
+
+输出内容包括：
+
+- 替代食材名称。
+- 替代比例。
+- 口味影响。
+- 是否已在库存中。
+
+面试表达：
+
+> 替代食材不是单纯让模型发挥，而是先查库存和偏好，再用预定义规则给出可解释建议。这样结果更稳定，也能避免推荐用户过敏或讨厌的食材。
+
+### 16.3 营养估算工具
+
+`estimate_meal_nutrition` 用于轻量估算热量和三大营养素。
+
+返回：
+
+- calories
+- protein_g
+- carbs_g
+- fat_g
+- per_serving
+- confidence
+
+这个工具定位是“膳食规划辅助”，不是医疗级营养计算。
+
+面试表达：
+
+> 我把营养估算定义为轻量工具，目的是辅助减脂、高蛋白等日常规划，不做医疗建议。对于数据库中没有的食材，会返回较低置信度，避免给用户造成过度准确的错觉。
+
+### 16.4 烹饪步骤陪跑工具
+
+`start_cooking_steps` 用于保存当前菜谱和步骤。
+
+`cooking_step` 支持：
+
+- `current`：查看当前步骤。
+- `next`：进入下一步。
+- `previous`：返回上一步。
+- `finish`：结束烹饪。
+
+这个功能让 Agent 能回答“下一步是什么”“刚才那一步再说一遍”等执行过程问题。
+
+面试表达：
+
+> 我把烹饪过程抽象成一个轻量状态机，保存当前 recipe、steps 和 current_step。这样用户在做饭过程中不需要重复上下文，Agent 可以接着当前进度继续指导。
+
+### 16.5 新增接口
+
+```text
+POST /api/v1/chef/inventory/consume
+POST /api/v1/chef/substitutions
+POST /api/v1/chef/nutrition
+POST /api/v1/chef/cooking-session
+GET  /api/v1/chef/cooking-session
+POST /api/v1/chef/cooking-session/advance
+```
+
+### 16.6 简历补充写法
+
+可以在项目经历中加一条：
+
+> 设计 Agent 预定义工具集，封装库存更新、库存消耗、替代食材推荐、营养估算和烹饪步骤追踪等工具，使系统具备从菜谱推荐、多日规划到执行反馈的状态闭环能力。

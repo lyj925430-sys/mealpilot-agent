@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.v1 import chat, chef, oss
+from app.api.v1 import auth, chat, chef, oss
 from app.common.logger import setup_logging
 from app.core.settings import settings
 
@@ -26,6 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
 app.include_router(chef.router, prefix="/api/v1", tags=["chef"])
 app.include_router(oss.router, prefix="/api/v1", tags=["oss"])
@@ -43,6 +44,11 @@ async def health_check():
             "oss": settings.oss_ready,
             "chef_memory": True,
             "meal_plan": True,
+            "inventory_tools": True,
+            "nutrition_estimate": True,
+            "cooking_steps": True,
+            "auth": True,
+            "household_profile": True,
         },
     }
 

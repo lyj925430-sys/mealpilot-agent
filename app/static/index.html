@@ -3,23 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Personal Chief</title>
-  <meta name="description" content="AI personal chef assistant">
+  <title>Personal Chief | MealPilot</title>
+  <meta name="description" content="MealPilot intelligent meal planning agent">
   <style>
     :root {
-      --bg: #f8f5ef;
-      --panel: #fff;
-      --panel-soft: #f1eee7;
-      --text: #24221f;
-      --muted: #6f6a62;
-      --line: #ddd5c8;
-      --primary: #2f7d68;
-      --primary-strong: #226251;
-      --danger: #b44747;
-      --shadow: 0 18px 55px rgba(49, 45, 37, 0.14);
+      --bg: #f7f9fc;
+      --surface: #ffffff;
+      --surface-soft: #f3f6fb;
+      --text: #1f2430;
+      --muted: #687083;
+      --line: #dfe5ef;
+      --blue: #4f7df3;
+      --cyan: #13a8c8;
+      --green: #27a66e;
+      --coral: #e16b5c;
+      --violet: #8b6cf6;
+      --shadow: 0 20px 60px rgba(31, 36, 48, 0.10);
+      --radius: 24px;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     html,
     body {
@@ -29,14 +34,18 @@
     }
 
     body {
-      background: linear-gradient(135deg, rgba(47, 125, 104, 0.08), rgba(200, 95, 52, 0.08)), var(--bg);
       color: var(--text);
+      background:
+        radial-gradient(circle at 18% 4%, rgba(79, 125, 243, 0.16), transparent 28%),
+        radial-gradient(circle at 82% 10%, rgba(39, 166, 110, 0.12), transparent 28%),
+        linear-gradient(180deg, #fbfcff 0%, var(--bg) 56%, #eef3f8 100%);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       letter-spacing: 0;
     }
 
     button,
-    textarea {
+    textarea,
+    input {
       font: inherit;
     }
 
@@ -45,223 +54,497 @@
       cursor: pointer;
     }
 
-    button:disabled {
+    button:disabled,
+    textarea:disabled {
       cursor: not-allowed;
-      opacity: 0.55;
+      opacity: 0.58;
     }
 
-    .app {
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
+    .app-shell {
       height: 100dvh;
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 14px;
-      gap: 12px;
+      display: grid;
+      grid-template-columns: 264px minmax(0, 1fr);
+      overflow: hidden;
     }
 
-    .topbar,
-    .sidebar,
-    .chat,
-    .composer {
-      background: rgba(255, 255, 255, 0.9);
-      border: 1px solid rgba(221, 213, 200, 0.9);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(14px);
-      border-radius: 8px;
-    }
-
-    .topbar {
+    .rail {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 12px 14px;
-      min-height: 68px;
+      flex-direction: column;
+      height: 100dvh;
+      min-height: 0;
+      padding: 18px 14px;
+      border-right: 1px solid rgba(223, 229, 239, 0.8);
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(18px);
     }
 
     .brand {
       display: flex;
       align-items: center;
-      min-width: 0;
       gap: 12px;
+      height: 44px;
+      padding: 0 8px;
+      margin-bottom: 18px;
     }
 
     .brand-mark {
       display: grid;
       place-items: center;
-      width: 42px;
-      height: 42px;
-      border-radius: 8px;
-      background: var(--primary);
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
       color: #fff;
-      flex: 0 0 auto;
+      background: conic-gradient(from 210deg, var(--blue), var(--cyan), var(--green), var(--coral), var(--blue));
+      box-shadow: 0 10px 26px rgba(79, 125, 243, 0.24);
     }
 
-    .brand h1 {
-      margin: 0;
-      font-size: 20px;
+    .brand-copy {
+      min-width: 0;
+    }
+
+    .brand-copy strong {
+      display: block;
+      font-size: 15px;
       line-height: 1.2;
     }
 
-    .brand p {
-      margin: 3px 0 0;
+    .brand-copy span {
+      display: block;
       color: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
+      margin-top: 2px;
     }
 
-    .toolbar,
-    .sidebar-head {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .workspace {
+    .rail-actions {
       display: grid;
-      grid-template-columns: 260px minmax(0, 1fr);
-      gap: 12px;
-      min-height: 0;
+      gap: 8px;
+      margin-bottom: 18px;
     }
 
-    .sidebar {
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      overflow: hidden;
+    .action-button,
+    .icon-button,
+    .send-button,
+    .panel-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      border-radius: 999px;
+      color: var(--text);
+      background: transparent;
+      transition: background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
     }
 
-    .sidebar-head {
-      justify-content: space-between;
-      padding: 12px;
-      border-bottom: 1px solid var(--line);
+    .action-button {
+      justify-content: flex-start;
+      padding: 0 14px;
+      background: #eef4ff;
+      color: #2755c7;
+      font-weight: 650;
     }
 
-    .sidebar-title {
-      font-size: 14px;
+    .action-button:hover,
+    .icon-button:hover,
+    .panel-button:hover {
+      background: #e7edf7;
+    }
+
+    .history-title {
+      padding: 0 10px;
+      margin: 8px 0;
+      color: var(--muted);
+      font-size: 12px;
       font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
 
     .thread-list {
-      flex: 1;
+      display: grid;
+      gap: 4px;
       min-height: 0;
-      overflow-y: auto;
-      padding: 8px;
+      overflow: auto;
+      padding-right: 2px;
     }
 
     .thread-item {
       width: 100%;
       display: grid;
-      gap: 4px;
-      text-align: left;
-      padding: 10px;
-      border-radius: 8px;
-      background: transparent;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 4px 8px;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 14px;
       color: var(--text);
-      border: 1px solid transparent;
+      background: transparent;
+      text-align: left;
     }
 
     .thread-item:hover,
     .thread-item.active {
-      background: var(--panel-soft);
-      border-color: var(--line);
+      background: #edf2f9;
+    }
+
+    .thread-item strong,
+    .thread-item span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .thread-text {
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .thread-delete {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+      opacity: 0;
+    }
+
+    .thread-item:hover .thread-delete,
+    .thread-item.active .thread-delete {
+      opacity: 1;
+    }
+
+    .thread-delete:hover {
+      color: var(--coral);
+      background: rgba(225, 107, 92, 0.10);
     }
 
     .thread-item strong {
       font-size: 13px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      font-weight: 650;
     }
 
     .thread-item span {
       color: var(--muted);
       font-size: 12px;
+    }
+
+    .main {
+      min-width: 0;
+      height: 100dvh;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    .topbar {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 0 28px;
+    }
+
+    .page-title {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .user-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(223, 229, 239, 0.72);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+      max-width: 180px;
+    }
+
+    .user-pill:hover {
+      background: #e7edf7;
+    }
+
+    .user-pill span {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .chat {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
+    .icon-button {
+      width: 40px;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(223, 229, 239, 0.72);
+    }
+
+    .content {
+      height: 100%;
       min-height: 0;
       overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 20px;
+      padding: 0 28px 24px;
+    }
+
+    .chat-area {
+      min-width: 0;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      gap: 18px;
+    }
+
+    .chat-area > div:last-child {
+      min-height: 0;
     }
 
     .messages {
-      flex: 1;
+      height: 100%;
       min-height: 0;
-      overflow-y: auto;
-      padding: 18px;
+      overflow: auto;
+      padding: 18px 4px 6px;
       scroll-behavior: smooth;
     }
 
-    .empty {
-      height: 100%;
-      min-height: 260px;
+    .hero {
+      min-height: 100%;
       display: grid;
-      place-items: center;
-      color: var(--muted);
-      text-align: center;
+      align-content: center;
+      justify-items: start;
+      padding: 24px max(24px, 8vw);
     }
 
-    .empty strong {
+    .hero h1 {
+      margin: 0;
+      max-width: 760px;
+      font-size: clamp(40px, 7vw, 76px);
+      line-height: 1.03;
+      font-weight: 750;
+      letter-spacing: 0;
+    }
+
+    .gradient-text {
       display: block;
+      background: linear-gradient(90deg, var(--blue), var(--cyan) 32%, var(--green) 62%, var(--coral));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hero p {
+      max-width: 680px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.7;
+    }
+
+    .prompt-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      width: min(900px, 100%);
+      margin-top: 34px;
+    }
+
+    .prompt-card {
+      min-height: 116px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid rgba(223, 229, 239, 0.78);
+      box-shadow: 0 12px 28px rgba(31, 36, 48, 0.06);
+      text-align: left;
       color: var(--text);
-      margin-bottom: 8px;
-      font-size: 18px;
+    }
+
+    .prompt-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 32px rgba(31, 36, 48, 0.10);
+    }
+
+    .prompt-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .prompt-card strong {
+      display: block;
+      font-size: 14px;
+      line-height: 1.45;
+      font-weight: 650;
     }
 
     .message {
       display: grid;
       gap: 8px;
-      margin: 0 0 18px;
+      margin: 0 auto 22px;
+      max-width: 880px;
     }
 
     .message.user {
       justify-items: end;
     }
 
+    .meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 0 4px;
+    }
+
+    .avatar {
+      width: 30px;
+      height: 30px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      box-shadow: 0 8px 18px rgba(31, 36, 48, 0.12);
+    }
+
+    .avatar.user {
+      background: linear-gradient(135deg, var(--green), var(--cyan));
+    }
+
+    .avatar.agent {
+      background: conic-gradient(from 210deg, var(--blue), var(--cyan), var(--green), var(--coral), var(--blue));
+    }
+
     .bubble {
       max-width: min(760px, 92%);
-      border-radius: 8px;
-      padding: 12px 14px;
-      line-height: 1.65;
-      white-space: pre-wrap;
+      padding: 14px 16px;
+      border-radius: 20px;
+      line-height: 1.7;
       overflow-wrap: anywhere;
-      border: 1px solid var(--line);
+      background: var(--surface);
+      border: 1px solid rgba(223, 229, 239, 0.78);
+      box-shadow: 0 10px 24px rgba(31, 36, 48, 0.05);
+    }
+
+    .bubble > :first-child {
+      margin-top: 0;
+    }
+
+    .bubble > :last-child {
+      margin-bottom: 0;
+    }
+
+    .bubble p {
+      margin: 0 0 10px;
+      white-space: pre-wrap;
+    }
+
+    .bubble h2,
+    .bubble h3 {
+      margin: 16px 0 8px;
+      line-height: 1.35;
+      font-weight: 750;
+    }
+
+    .bubble h2 {
+      font-size: 18px;
+    }
+
+    .bubble h3 {
+      font-size: 16px;
+    }
+
+    .bubble ul,
+    .bubble ol {
+      margin: 8px 0 12px;
+      padding-left: 22px;
+    }
+
+    .bubble li {
+      margin: 5px 0;
+    }
+
+    .bubble table {
+      width: 100%;
+      margin: 10px 0 14px;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 14px;
+      font-size: 14px;
       background: #fff;
     }
 
+    .bubble th,
+    .bubble td {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .bubble th {
+      background: #f0f5fb;
+      font-weight: 700;
+    }
+
+    .bubble hr {
+      height: 1px;
+      border: 0;
+      background: var(--line);
+      margin: 16px 0;
+    }
+
     .user .bubble {
-      background: var(--primary);
       color: #fff;
-      border-color: var(--primary);
-    }
-
-    .assistant .bubble {
-      background: #fffdf9;
-    }
-
-    .meta {
-      font-size: 12px;
-      color: var(--muted);
+      background: linear-gradient(135deg, #4f7df3, #13a8c8);
+      border-color: transparent;
     }
 
     .preview {
-      max-width: 220px;
-      max-height: 180px;
+      max-width: 260px;
+      max-height: 190px;
       object-fit: cover;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      display: block;
+      border-radius: 18px;
+      border: 1px solid rgba(223, 229, 239, 0.78);
+      box-shadow: var(--shadow);
     }
 
     .composer {
-      padding: 12px;
-      flex: 0 0 auto;
+      width: min(920px, 100%);
+      margin: 0 auto;
+      padding: 10px;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(223, 229, 239, 0.86);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .chat-area > div:last-child {
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
     }
 
     .selected-file {
@@ -269,11 +552,11 @@
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      margin-bottom: 10px;
-      padding: 8px 10px;
-      border-radius: 8px;
-      background: var(--panel-soft);
+      margin: 0 4px 8px;
+      padding: 8px 10px 8px 14px;
+      border-radius: 18px;
       color: var(--muted);
+      background: var(--surface-soft);
       font-size: 13px;
     }
 
@@ -285,96 +568,496 @@
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto auto;
       align-items: end;
-      gap: 10px;
+      gap: 8px;
     }
 
     textarea {
       width: 100%;
-      min-height: 44px;
-      max-height: 132px;
+      min-height: 48px;
+      max-height: 148px;
       resize: none;
-      padding: 11px 13px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      border: 0;
       outline: none;
-      background: #fff;
+      padding: 13px 8px;
       color: var(--text);
+      background: transparent;
       line-height: 1.5;
     }
 
-    textarea:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(47, 125, 104, 0.14);
+    textarea::placeholder {
+      color: #8a93a6;
     }
 
-    .icon-button,
-    .text-button,
-    .send,
-    .stop {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      height: 40px;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      transition: background 0.16s ease, border-color 0.16s ease;
-    }
-
-    .icon-button {
-      width: 40px;
-      background: var(--panel-soft);
-      color: var(--text);
+    .send-button {
+      width: 46px;
+      height: 46px;
+      color: #fff;
+      background: #1f2430;
       flex: 0 0 auto;
     }
 
-    .text-button {
-      gap: 8px;
-      padding: 0 13px;
-      background: var(--panel-soft);
-      color: var(--text);
-      white-space: nowrap;
+    .send-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 24px rgba(31, 36, 48, 0.20);
     }
 
-    .icon-button:hover,
-    .text-button:hover {
-      background: #e8e2d6;
-      border-color: #cfc4b5;
-    }
-
-    .send,
-    .stop {
-      width: 44px;
-      height: 44px;
-      color: #fff;
-      border-color: transparent;
-    }
-
-    .send {
-      background: var(--primary);
-    }
-
-    .send:hover {
-      background: var(--primary-strong);
-    }
-
-    .stop {
+    .stop-button {
       display: none;
-      background: var(--danger);
+      background: var(--coral);
     }
 
-    .stop.active {
+    .stop-button.active {
       display: inline-flex;
     }
 
-    .send.hidden {
+    .send-button.hidden {
       display: none;
     }
 
     .status {
       min-height: 18px;
-      margin-top: 8px;
+      width: min(920px, 100%);
+      margin: 8px auto 0;
       color: var(--muted);
       font-size: 13px;
+      padding-left: 18px;
+    }
+
+    .side-panel {
+      min-width: 0;
+      height: 100%;
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+      padding-top: 18px;
+    }
+
+    .panel {
+      border-radius: var(--radius);
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(223, 229, 239, 0.78);
+      box-shadow: 0 14px 34px rgba(31, 36, 48, 0.06);
+      backdrop-filter: blur(16px);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .memory-list {
+      display: grid;
+      gap: 8px;
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    .memory-item {
+      display: grid;
+      gap: 9px;
+      padding: 11px 12px;
+      border-radius: 14px;
+      background: var(--surface-soft);
+      font-size: 13px;
+    }
+
+    .memory-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .memory-item span {
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .memory-slider-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .memory-slider {
+      width: 100%;
+      accent-color: var(--green);
+    }
+
+    .memory-bar {
+      height: 8px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #d7dde8;
+    }
+
+    .memory-bar-fill {
+      height: 100%;
+      width: var(--remaining, 100%);
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--green), var(--cyan));
+      transition: width 0.16s ease;
+    }
+
+    .inventory-apply {
+      margin-top: 12px;
+    }
+
+    .panel-button {
+      width: 100%;
+      min-height: 42px;
+      padding: 0 14px;
+      background: #edf2f9;
+      font-weight: 650;
+    }
+
+    .tool-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .tool-chip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 38px;
+      padding: 8px 11px;
+      border-radius: 14px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .tool-chip strong {
+      color: var(--text);
+      font-weight: 650;
+    }
+
+    .meal-members {
+      width: min(920px, 100%);
+      margin: 0 auto 10px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .meal-members.active {
+      display: flex;
+    }
+
+    .member-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 0 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid var(--line);
+      color: var(--text);
+      font-weight: 650;
+    }
+
+    .member-chip.inactive {
+      opacity: 0.42;
+      filter: grayscale(0.7);
+      text-decoration: line-through;
+    }
+
+    .profile-form {
+      display: grid;
+      gap: 10px;
+    }
+
+    .profile-form label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .profile-form input,
+    .profile-form textarea {
+      width: 100%;
+      min-height: 36px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      outline: none;
+      resize: vertical;
+    }
+
+    .profile-form textarea {
+      min-height: 66px;
+    }
+
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .profile-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 45;
+      display: none;
+      align-items: stretch;
+      justify-content: stretch;
+      padding: 0;
+      background:
+        radial-gradient(circle at 18% 10%, rgba(79, 125, 243, 0.12), transparent 30%),
+        radial-gradient(circle at 88% 18%, rgba(39, 166, 110, 0.10), transparent 28%),
+        rgba(247, 249, 252, 0.78);
+      backdrop-filter: blur(16px);
+    }
+
+    .profile-overlay.active {
+      display: flex;
+    }
+
+    .profile-page {
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 18px;
+      padding: 34px clamp(26px, 5vw, 72px) 26px;
+      border-radius: 0;
+      background: rgba(255, 255, 255, 0.74);
+      border: 0;
+      box-shadow: none;
+      backdrop-filter: blur(18px);
+    }
+
+    .profile-page-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .profile-page-head h2 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    .profile-page-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .profile-page-grid {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(360px, 0.72fr) minmax(0, 1.28fr);
+      gap: 20px;
+      max-width: 1380px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .relative-cards {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+      align-content: start;
+      gap: 12px;
+      max-height: 100%;
+      overflow: auto;
+      padding: 2px 2px 8px;
+    }
+
+    .relative-card {
+      min-height: 154px;
+      padding: 14px;
+      border-radius: 20px;
+      background: #f5f8fd;
+      border: 1px solid var(--line);
+      cursor: pointer;
+      transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+    }
+
+    .relative-card.draft {
+      grid-column: span 2;
+      background: #ffffff;
+      cursor: default;
+      box-shadow: 0 14px 30px rgba(31, 36, 48, 0.08);
+    }
+
+    .relative-card:hover,
+    .relative-card.active {
+      transform: translateY(-1px);
+      background: #fff;
+      box-shadow: 0 14px 30px rgba(31, 36, 48, 0.08);
+    }
+
+    .relative-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .relative-card-head strong {
+      font-size: 14px;
+    }
+
+    .profile-avatar-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .profile-avatar,
+    .relative-avatar {
+      display: inline-grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      font-weight: 850;
+      box-shadow: 0 12px 26px rgba(31, 36, 48, 0.14);
+      flex: 0 0 auto;
+    }
+
+    .profile-avatar {
+      width: 64px;
+      height: 64px;
+      font-size: 24px;
+      background: linear-gradient(135deg, var(--green), var(--cyan));
+    }
+
+    .relative-avatar {
+      width: 44px;
+      height: 44px;
+      font-size: 17px;
+      background: linear-gradient(135deg, var(--blue), var(--violet));
+    }
+
+    .relative-avatar.parent {
+      background: linear-gradient(135deg, #4f7df3, #13a8c8);
+    }
+
+    .relative-avatar.partner {
+      background: linear-gradient(135deg, #e16b5c, #8b6cf6);
+    }
+
+    .relative-avatar.child {
+      background: linear-gradient(135deg, #27a66e, #13a8c8);
+    }
+
+    .relative-avatar.elder {
+      background: linear-gradient(135deg, #7a8da8, #4f7df3);
+    }
+
+    .relative-summary {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .relative-summary-title {
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 750;
+    }
+
+    .relative-editor {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      cursor: default;
+    }
+
+    .relative-card.active {
+      grid-column: span 2;
+      min-height: 0;
+    }
+
+    .relative-card.draft .relative-editor {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .relative-card.draft .relative-summary {
+      display: none;
+    }
+
+    .relative-card-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .relative-card.active .relative-editor {
+      display: grid;
+      gap: 10px;
+    }
+
+    .profile-page .panel {
+      min-height: 0;
+      overflow: hidden;
+      box-shadow: none;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .profile-page .profile-form {
+      height: 100%;
+      min-height: 0;
+    }
+
+    .profile-page .panel:first-child {
+      overflow: auto;
+    }
+
+    .profile-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      max-width: 1380px;
+      width: 100%;
+      margin: 0 auto;
     }
 
     .sr-only {
@@ -389,6 +1072,114 @@
       border: 0;
     }
 
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      background:
+        radial-gradient(circle at 24% 10%, rgba(79, 125, 243, 0.20), transparent 30%),
+        radial-gradient(circle at 82% 18%, rgba(39, 166, 110, 0.16), transparent 30%),
+        rgba(247, 249, 252, 0.86);
+      backdrop-filter: blur(18px);
+    }
+
+    .auth-overlay.active {
+      display: flex;
+    }
+
+    .auth-card {
+      width: min(420px, 100%);
+      padding: 24px;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(223, 229, 239, 0.9);
+      box-shadow: var(--shadow);
+    }
+
+    .auth-card h2 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    .auth-card p {
+      margin: 10px 0 20px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .auth-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 4px;
+      margin-bottom: 16px;
+      border-radius: 999px;
+      background: var(--surface-soft);
+    }
+
+    .auth-tab {
+      min-height: 38px;
+      border-radius: 999px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 700;
+    }
+
+    .auth-tab.active {
+      color: var(--text);
+      background: #fff;
+      box-shadow: 0 8px 18px rgba(31, 36, 48, 0.08);
+    }
+
+    .auth-form {
+      display: grid;
+      gap: 12px;
+    }
+
+    .auth-form label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .auth-form input {
+      width: 100%;
+      height: 46px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      outline: none;
+      color: var(--text);
+      background: #fff;
+    }
+
+    .auth-form input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(79, 125, 243, 0.12);
+    }
+
+    .auth-submit {
+      min-height: 46px;
+      margin-top: 4px;
+      border-radius: 16px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      font-weight: 750;
+    }
+
+    .auth-message {
+      min-height: 18px;
+      color: var(--coral);
+      font-size: 13px;
+    }
+
     svg {
       width: 20px;
       height: 20px;
@@ -397,155 +1188,367 @@
       stroke-linecap: round;
       stroke-linejoin: round;
       fill: none;
+      flex: 0 0 auto;
     }
 
-    @media (max-width: 760px) {
-      .app {
-        padding: 10px;
-        gap: 10px;
+    @media (max-width: 1080px) {
+      .app-shell {
+        grid-template-columns: 88px minmax(0, 1fr);
       }
 
-      .topbar {
-        min-height: 58px;
-      }
-
-      .brand p {
+      .brand-copy,
+      .action-button span,
+      .history-title,
+      .thread-item span {
         display: none;
       }
 
-      .workspace {
+      .action-button {
+        justify-content: center;
+        padding: 0;
+      }
+
+      .thread-item {
+        justify-items: center;
+        padding: 10px 6px;
+      }
+
+      .thread-item strong {
+        max-width: 52px;
+      }
+
+      .content {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .side-panel {
+        display: none;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .app-shell {
         grid-template-columns: 1fr;
-        grid-template-rows: 136px minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      .rail {
+        height: auto;
+        min-height: 0;
+        border-right: 0;
+        border-bottom: 1px solid rgba(223, 229, 239, 0.8);
+        padding: 10px;
+        overflow: hidden;
+      }
+
+      .brand,
+      .rail-actions {
+        display: none;
       }
 
       .thread-list {
         display: flex;
         overflow-x: auto;
-        overflow-y: hidden;
-        gap: 8px;
       }
 
       .thread-item {
-        min-width: 180px;
+        min-width: 150px;
+        justify-items: start;
       }
 
-      .text-button span {
-        display: none;
+      .thread-item span {
+        display: block;
       }
 
-      .text-button {
-        width: 40px;
-        padding: 0;
+      .main {
+        height: 100%;
+        min-height: 0;
       }
 
-      .messages {
-        padding: 12px;
+      .content {
+        height: 100%;
       }
 
-      .bubble {
-        max-width: 96%;
+      .topbar {
+        height: 54px;
+        padding: 0 14px;
+      }
+
+      .content {
+        padding: 0 12px 14px;
+      }
+
+      .hero {
+        padding: 18px 8px;
+      }
+
+      .hero h1 {
+        font-size: 40px;
+      }
+
+      .hero p {
+        font-size: 15px;
+      }
+
+      .prompt-grid {
+        grid-template-columns: 1fr 1fr;
+        margin-top: 24px;
+      }
+
+      .prompt-card {
+        min-height: 104px;
+      }
+
+      .composer {
+        border-radius: 24px;
+      }
+
+      .profile-page-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .profile-page {
+        padding: 18px;
+      }
+
+      .relative-card.active,
+      .relative-card.draft {
+        grid-column: span 1;
       }
     }
   </style>
 </head>
 <body>
-  <main class="app">
-    <header class="topbar">
+  <div class="app-shell">
+    <aside class="rail">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.46.32-.84.73-1.04A4 4 0 0 0 16.6 6a5 5 0 0 0-9.2 0 4 4 0 0 0-2.13 7.61c.41.2.73.58.73 1.04V20a1 1 0 0 0 1 1Z"></path><path d="M6 17h12"></path></svg>
+          <svg viewBox="0 0 24 24"><path d="M12 3c3.8 3.2 6 6.5 6 9.2a6 6 0 0 1-12 0C6 9.5 8.2 6.2 12 3Z"></path><path d="M9.2 13.2c1.2.9 2.6 1.2 4.3.9"></path></svg>
         </div>
-        <div>
-          <h1>&#65;&#73;&#32;&#31169;&#20154;&#21416;&#24072;</h1>
-          <p>&#35782;&#21035;&#39135;&#26448;&#65292;&#29983;&#25104;&#21487;&#25191;&#34892;&#30340;&#33756;&#35889;&#24314;&#35758;</p>
+        <div class="brand-copy">
+          <strong>MealPilot</strong>
+          <span>Personal Chief</span>
         </div>
       </div>
-      <div class="toolbar">
-        <button class="text-button" id="new-chat" type="button" title="New chat">
-          <svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
-          <span>&#26032;&#24314;&#20250;&#35805;</span>
-        </button>
-        <button class="icon-button" id="clear-chat" type="button" title="Clear current chat">
-          <svg viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>
-          <span class="sr-only">Clear current chat</span>
-        </button>
-      </div>
-    </header>
 
-    <section class="workspace">
-      <aside class="sidebar" aria-label="Conversation history">
-        <div class="sidebar-head">
-          <div class="sidebar-title">&#21382;&#21490;&#23545;&#35805;</div>
-          <button class="icon-button" id="refresh-history" type="button" title="Refresh history">
+      <div class="rail-actions">
+        <button class="action-button" id="new-chat" type="button">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+          <span>新建对话</span>
+        </button>
+      </div>
+
+      <div class="history-title">History</div>
+      <div class="thread-list" id="thread-list"></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="page-title">MealPilot Agent</div>
+        <div class="top-actions">
+          <button class="user-pill" id="user-pill" type="button" title="个人主页">
+            <svg viewBox="0 0 24 24"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="8" r="4"></circle></svg>
+            <span id="user-name">未登录</span>
+          </button>
+          <button class="icon-button" id="refresh-history" type="button" title="刷新历史">
             <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.2 6.5"></path><path d="M3 12A9 9 0 0 1 18.2 5.5"></path><path d="M3 18v-5h5"></path><path d="M21 6v5h-5"></path></svg>
-            <span class="sr-only">Refresh history</span>
+            <span class="sr-only">刷新历史</span>
+          </button>
+          <button class="icon-button" id="logout" type="button" title="退出登录">
+            <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>
+            <span class="sr-only">退出登录</span>
+          </button>
+          <button class="icon-button" id="clear-chat" type="button" title="清空当前对话">
+            <svg viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg>
+            <span class="sr-only">清空当前对话</span>
           </button>
         </div>
-        <div class="thread-list" id="thread-list"></div>
-      </aside>
+      </header>
 
-      <section class="chat" aria-live="polite">
-        <div class="messages" id="messages">
-          <div class="empty" id="empty-state">
-            <div>
-              <strong>&#20170;&#22825;&#24819;&#21507;&#28857;&#20160;&#20040;&#65311;</strong>
-              <span>&#19978;&#20256;&#20912;&#31665;&#29031;&#29255;&#25110;&#36755;&#20837;&#39135;&#26448;&#28165;&#21333;&#65292;&#25105;&#26469;&#32473;&#20320;&#37197;&#33756;&#12290;</span>
+      <section class="content">
+        <section class="chat-area">
+          <div class="messages" id="messages">
+            <div class="hero" id="empty-state">
+              <h1><span class="gradient-text">今天想怎么吃？</span>我来帮你规划。</h1>
+              <p>输入食材、口味、忌口或上传冰箱照片。MealPilot 会结合食材余量、联网搜索和菜单规划工具，给你一份能直接执行的方案。</p>
+              <div class="prompt-grid">
+                <button class="prompt-card" type="button" data-prompt="我有鸡蛋、番茄、鸡胸肉，帮我安排三天晚餐。">
+                  <span>Meal plan</span>
+                  <strong>根据库存安排三天晚餐</strong>
+                </button>
+                <button class="prompt-card" type="button" data-prompt="我想减脂，高蛋白，晚饭控制在 30 分钟内。">
+                  <span>Preference</span>
+                  <strong>加入饮食目标和时间限制</strong>
+                </button>
+                <button class="prompt-card" type="button" data-prompt="没有黄油，可以用什么替代？">
+                  <span>Substitute</span>
+                  <strong>缺少食材时给替代方案</strong>
+                </button>
+                <button class="prompt-card" type="button" data-prompt="番茄炒蛋做完了，帮我记录库存消耗。">
+                  <span>Inventory</span>
+                  <strong>做完后更新厨房库存</strong>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
-    </section>
 
-    <section class="composer">
-      <div class="selected-file" id="selected-file">
-        <span id="file-name"></span>
-        <button class="icon-button" id="remove-file" type="button" title="Remove image">
+          <div>
+            <div class="meal-members" id="meal-members"></div>
+            <section class="composer">
+              <div class="selected-file" id="selected-file">
+                <span id="file-name"></span>
+                <button class="icon-button" id="remove-file" type="button" title="移除图片">
+                  <svg viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+                  <span class="sr-only">移除图片</span>
+                </button>
+              </div>
+              <div class="composer-row">
+                <input id="image-input" class="sr-only" type="file" accept="image/*">
+                <button class="icon-button" id="pick-image" type="button" title="选择图片">
+                  <svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.2-3.2a2 2 0 0 0-2.8 0L6 21"></path></svg>
+                  <span class="sr-only">选择图片</span>
+                </button>
+                <textarea id="message-input" rows="1" placeholder="问问 MealPilot，比如：根据我的库存安排三天晚餐"></textarea>
+                <button class="send-button" id="send" type="button" title="发送">
+                  <svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>
+                  <span class="sr-only">发送</span>
+                </button>
+                <button class="send-button stop-button" id="stop" type="button" title="停止">
+                  <svg viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"></rect></svg>
+                  <span class="sr-only">停止</span>
+                </button>
+              </div>
+            </section>
+            <div class="status" id="status"></div>
+          </div>
+        </section>
+
+        <aside class="side-panel">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>食材余量</h2>
+              <button class="icon-button" id="refresh-inventory" type="button" title="刷新库存">
+                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.2 6.5"></path><path d="M3 12A9 9 0 0 1 18.2 5.5"></path><path d="M3 18v-5h5"></path><path d="M21 6v5h-5"></path></svg>
+                <span class="sr-only">刷新库存</span>
+              </button>
+            </div>
+            <div class="memory-list" id="inventory-list">
+              <p>暂无库存记录。</p>
+            </div>
+            <button class="panel-button inventory-apply" id="apply-inventory-usage" type="button">确认使用情况</button>
+          </section>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <section class="auth-overlay" id="auth-overlay" aria-modal="true" role="dialog">
+    <div class="auth-card">
+      <h2>欢迎使用 MealPilot</h2>
+      <p>登录后会为你保存独立的食材余量、历史对话和菜单规划状态。</p>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="login-tab" type="button">登录</button>
+        <button class="auth-tab" id="register-tab" type="button">注册</button>
+      </div>
+      <form class="auth-form" id="auth-form">
+        <label>
+          用户名
+          <input id="auth-username" type="text" autocomplete="username" minlength="3" maxlength="32" required>
+        </label>
+        <label>
+          密码
+          <input id="auth-password" type="password" autocomplete="current-password" minlength="6" maxlength="128" required>
+        </label>
+        <button class="auth-submit" id="auth-submit" type="submit">登录</button>
+        <div class="auth-message" id="auth-message"></div>
+      </form>
+    </div>
+  </section>
+
+  <section class="profile-overlay" id="profile-overlay" aria-modal="true" role="dialog">
+    <div class="profile-page">
+      <div class="profile-page-head">
+        <div>
+          <h2>个人主页</h2>
+          <p>这里保存本人和家人的饮食相关信息，后续菜单规划会自动参考这些约束。</p>
+        </div>
+        <button class="icon-button" id="close-profile" type="button" title="关闭">
           <svg viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
-          <span class="sr-only">Remove image</span>
+          <span class="sr-only">关闭</span>
         </button>
       </div>
-      <div class="composer-row">
-        <input id="image-input" class="sr-only" type="file" accept="image/*">
-        <button class="icon-button" id="pick-image" type="button" title="Choose image">
-          <svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.2-3.2a2 2 0 0 0-2.8 0L6 21"></path></svg>
-          <span class="sr-only">Choose image</span>
-        </button>
-        <textarea id="message-input" rows="1" placeholder="&#36755;&#20837;&#39135;&#26448;&#12289;&#21475;&#21619;&#12289;&#24524;&#21475;&#25110;&#29992;&#39184;&#20154;&#25968;"></textarea>
-        <button class="send" id="send" type="button" title="Send">
-          <svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>
-          <span class="sr-only">Send</span>
-        </button>
-        <button class="stop" id="stop" type="button" title="Stop">
-          <svg viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2"></rect></svg>
-          <span class="sr-only">Stop</span>
-        </button>
+
+      <form class="profile-form" id="profile-form">
+        <div class="profile-page-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>本人档案</h2>
+            </div>
+            <div class="profile-avatar-row">
+              <div class="profile-avatar" id="profile-avatar">U</div>
+              <div>
+                <strong id="profile-avatar-name">当前用户</strong>
+                <p>默认头像会使用用户名首字母。</p>
+              </div>
+            </div>
+            <div class="profile-grid">
+              <label>年龄<input id="profile-age" type="number" min="1" max="120"></label>
+              <label>性别<input id="profile-gender" type="text" placeholder="如：男/女"></label>
+              <label>身高 cm<input id="profile-height" type="number" min="40" max="260" step="0.1"></label>
+              <label>体重 kg<input id="profile-weight" type="number" min="2" max="400" step="0.1"></label>
+            </div>
+            <label>活动水平<input id="profile-activity" type="text" placeholder="久坐/轻体力/经常运动"></label>
+            <label>健康目标<input id="profile-goals" type="text" placeholder="减脂, 高蛋白"></label>
+            <label>身体状况<input id="profile-conditions" type="text" placeholder="控糖, 高血压等"></label>
+            <label>过敏/忌口<input id="profile-allergies" type="text" placeholder="花生, 海鲜"></label>
+            <label>备注<textarea id="profile-notes" placeholder="例如：晚餐尽量清淡，少油少盐"></textarea></label>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>亲人信息</h2>
+              <button class="panel-button" id="add-relative" type="button" style="width: auto;">添加亲人</button>
+            </div>
+            <div class="relative-cards" id="relative-cards"></div>
+          </section>
+        </div>
+      </form>
+      <div class="profile-actions">
+        <button class="panel-button" id="cancel-profile" type="button" style="width: auto;">取消</button>
+        <button class="auth-submit" id="save-profile" type="submit" form="profile-form" style="min-width: 150px;">保存个人主页</button>
       </div>
-      <div class="status" id="status"></div>
-    </section>
-  </main>
+    </div>
+  </section>
 
   <script>
     const LABELS = {
-      you: "\u4f60",
-      assistant: "AI \u79c1\u4eba\u53a8\u5e08",
-      untitled: "\u65b0\u5bf9\u8bdd",
-      empty: "\u6682\u65e0\u5185\u5bb9",
-      uploadPreparing: "\u6b63\u5728\u51c6\u5907\u56fe\u7247\u4e0a\u4f20...",
-      uploadFailedUrl: "\u56fe\u7247\u4e0a\u4f20\u5730\u5740\u751f\u6210\u5931\u8d25",
-      uploading: "\u6b63\u5728\u4e0a\u4f20\u56fe\u7247...",
-      uploadFailed: "\u56fe\u7247\u4e0a\u4f20\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5 OSS \u914d\u7f6e\u6216\u7f51\u7edc\u72b6\u6001",
-      needInput: "\u8bf7\u8f93\u5165\u98df\u6750\uff0c\u6216\u5148\u9009\u62e9\u4e00\u5f20\u56fe\u7247\u3002",
-      imagePrompt: "\u8bf7\u6839\u636e\u8fd9\u5f20\u56fe\u7247\u63a8\u8350\u83dc\u8c31\u3002",
-      generating: "\u6b63\u5728\u68c0\u7d22\u83dc\u8c31\u5e76\u751f\u6210\u5efa\u8bae...",
-      requestFailed: "\u5bf9\u8bdd\u8bf7\u6c42\u5931\u8d25",
-      stopped: "\u5df2\u505c\u6b62\u751f\u6210\u3002",
-      genericFailed: "\u8bf7\u6c42\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002",
-      imageAlt: "\u5df2\u9009\u62e9\u7684\u98df\u6750\u56fe\u7247",
-      loadingHistory: "\u6b63\u5728\u8bfb\u53d6\u5386\u53f2\u5bf9\u8bdd..."
+      you: "你",
+      assistant: "MealPilot",
+      untitled: "新对话",
+      empty: "暂无内容",
+      uploadPreparing: "正在准备图片上传...",
+      uploadFailedUrl: "图片上传地址生成失败",
+      uploading: "正在上传图片...",
+      uploadFailed: "图片上传失败，请检查 OSS 配置或网络状态",
+      needInput: "请输入食材，或先选择一张图片。",
+      imagePrompt: "请根据这张图片推荐菜谱。",
+      generating: "正在思考并调用工具...",
+      requestFailed: "对话请求失败",
+      stopped: "已停止生成。",
+      genericFailed: "请求失败，请稍后重试。",
+      imageAlt: "已选择的食材图片",
+      loadingHistory: "正在读取历史对话...",
+      inventorySaved: "演示库存已写入。",
+      inventoryFailed: "库存读取失败。",
+      loginRequired: "请先登录。",
+      loginFailed: "登录失败，请检查用户名和密码。",
+      registerFailed: "注册失败，用户名可能已存在。"
     };
 
-    const THREADS_KEY = "personal-chief-threads";
-    const CURRENT_THREAD_KEY = "personal-chief-thread-id";
+    const THREADS_KEY = "mealpilot-threads";
+    const CURRENT_THREAD_KEY = "mealpilot-thread-id";
+    const AUTH_TOKEN_KEY = "mealpilot-auth-token";
+    const AUTH_USER_KEY = "mealpilot-auth-user";
 
     const messagesEl = document.querySelector("#messages");
     const emptyState = document.querySelector("#empty-state");
@@ -562,11 +1565,38 @@
     const newChatBtn = document.querySelector("#new-chat");
     const clearChatBtn = document.querySelector("#clear-chat");
     const refreshHistoryBtn = document.querySelector("#refresh-history");
+    const refreshInventoryBtn = document.querySelector("#refresh-inventory");
+    const inventoryListEl = document.querySelector("#inventory-list");
+    const applyInventoryUsageBtn = document.querySelector("#apply-inventory-usage");
+    const mealMembersEl = document.querySelector("#meal-members");
+    const profileForm = document.querySelector("#profile-form");
+    const relativeCardsEl = document.querySelector("#relative-cards");
+    const addRelativeBtn = document.querySelector("#add-relative");
+    const profileOverlay = document.querySelector("#profile-overlay");
+    const closeProfileBtn = document.querySelector("#close-profile");
+    const cancelProfileBtn = document.querySelector("#cancel-profile");
+    const userPill = document.querySelector("#user-pill");
+    const userNameEl = document.querySelector("#user-name");
+    const logoutBtn = document.querySelector("#logout");
+    const authOverlay = document.querySelector("#auth-overlay");
+    const authForm = document.querySelector("#auth-form");
+    const authUsername = document.querySelector("#auth-username");
+    const authPassword = document.querySelector("#auth-password");
+    const authSubmit = document.querySelector("#auth-submit");
+    const authMessage = document.querySelector("#auth-message");
+    const loginTab = document.querySelector("#login-tab");
+    const registerTab = document.querySelector("#register-tab");
 
     let selectedFile = null;
     let abortController = null;
+    let authMode = "login";
+    let authToken = localStorage.getItem(AUTH_TOKEN_KEY) || "";
+    let currentUser = loadStoredUser();
+    let household = { profile: {}, relatives: [] };
+    let absentRelativeIds = new Set();
+    let inventoryItems = [];
     let threads = loadThreads();
-    let threadId = localStorage.getItem(CURRENT_THREAD_KEY) || "";
+    let threadId = localStorage.getItem(currentThreadKey()) || "";
 
     if (!threadId || !threads.some((thread) => thread.id === threadId)) {
       threadId = createThreadId();
@@ -574,26 +1604,136 @@
       saveThreads();
     }
 
-    localStorage.setItem(CURRENT_THREAD_KEY, threadId);
+    localStorage.setItem(currentThreadKey(), threadId);
     renderThreadList();
     loadThreadMessages(threadId);
+    loadInventory();
+    initializeAuth();
 
     function createThreadId() {
-      return `web-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const userPart = currentUser ? currentUser.id.replace(/[^A-Za-z0-9_.:-]/g, "") : "guest";
+      return `user-${userPart}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function loadStoredUser() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || "null");
+        return parsed && parsed.id && parsed.username ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function threadsKey() {
+      return currentUser ? `${THREADS_KEY}:${currentUser.id}` : `${THREADS_KEY}:guest`;
+    }
+
+    function currentThreadKey() {
+      return currentUser ? `${CURRENT_THREAD_KEY}:${currentUser.id}` : `${CURRENT_THREAD_KEY}:guest`;
+    }
+
+    function kitchenThreadId() {
+      return currentUser ? `kitchen-${currentUser.id}` : threadId;
+    }
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      loginTab.classList.toggle("active", mode === "login");
+      registerTab.classList.toggle("active", mode === "register");
+      authSubmit.textContent = mode === "login" ? "登录" : "注册";
+      authPassword.autocomplete = mode === "login" ? "current-password" : "new-password";
+      authMessage.textContent = "";
+    }
+
+    function setCurrentUser(user, token) {
+      currentUser = user;
+      authToken = token;
+      localStorage.setItem(AUTH_TOKEN_KEY, token);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+      userNameEl.textContent = user.username;
+      updateProfileAvatar();
+      authOverlay.classList.remove("active");
+      switchToUserThread();
+    }
+
+    function clearAuthState() {
+      currentUser = null;
+      authToken = "";
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(AUTH_USER_KEY);
+      localStorage.removeItem(currentThreadKey());
+      threads = [];
+      threadId = "";
+      userNameEl.textContent = "未登录";
+      updateProfileAvatar();
+      authOverlay.classList.add("active");
+      renderThreadList();
+      clearMessageArea();
+      inventoryListEl.innerHTML = "<p>登录后显示你的厨房库存。</p>";
+      renderRelativeCards([emptyRelative()]);
+    }
+
+    function switchToUserThread() {
+      threads = loadThreads();
+      const prefix = `user-${currentUser.id}-`;
+      const existing = threads.find((thread) => thread.id.startsWith(prefix));
+      threadId = existing ? existing.id : createThreadId();
+      if (!existing) {
+        threads.unshift(createThread(threadId));
+        saveThreads();
+      }
+      localStorage.setItem(currentThreadKey(), threadId);
+      renderThreadList();
+      loadThreadMessages(threadId);
+      loadInventory();
+      loadHousehold();
+    }
+
+    async function initializeAuth() {
+      if (!authToken) {
+        clearAuthState();
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/v1/auth/me", {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (!response.ok) {
+          throw new Error();
+        }
+        const payload = await response.json();
+        currentUser = payload.user;
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(currentUser));
+        userNameEl.textContent = currentUser.username;
+        updateProfileAvatar();
+        authOverlay.classList.remove("active");
+        switchToUserThread();
+      } catch {
+        clearAuthState();
+      }
+    }
+
+    function requireAuth() {
+      if (authToken && currentUser) {
+        return true;
+      }
+      authOverlay.classList.add("active");
+      setStatus(LABELS.loginRequired);
+      return false;
+    }
+
+    function authHeaders(extra = {}) {
+      return authToken ? { ...extra, Authorization: `Bearer ${authToken}` } : extra;
     }
 
     function createThread(id) {
-      return {
-        id,
-        title: LABELS.untitled,
-        lastMessage: LABELS.empty,
-        updatedAt: Date.now()
-      };
+      return { id, title: LABELS.untitled, lastMessage: LABELS.empty, updatedAt: Date.now() };
     }
 
     function loadThreads() {
       try {
-        const parsed = JSON.parse(localStorage.getItem(THREADS_KEY) || "[]");
+        const parsed = JSON.parse(localStorage.getItem(threadsKey()) || "[]");
         return Array.isArray(parsed) ? parsed : [];
       } catch {
         return [];
@@ -602,7 +1742,7 @@
 
     function saveThreads() {
       threads.sort((a, b) => b.updatedAt - a.updatedAt);
-      localStorage.setItem(THREADS_KEY, JSON.stringify(threads.slice(0, 40)));
+      localStorage.setItem(threadsKey(), JSON.stringify(threads.slice(0, 40)));
     }
 
     function getCurrentThread() {
@@ -634,13 +1774,22 @@
         item.className = `thread-item${thread.id === threadId ? " active" : ""}`;
         item.dataset.threadId = thread.id;
 
+        const text = document.createElement("div");
+        text.className = "thread-text";
         const title = document.createElement("strong");
         title.textContent = thread.title || LABELS.untitled;
 
         const summary = document.createElement("span");
         summary.textContent = thread.lastMessage || LABELS.empty;
 
-        item.append(title, summary);
+        const remove = document.createElement("span");
+        remove.className = "thread-delete";
+        remove.dataset.deleteThread = thread.id;
+        remove.title = "删除记录";
+        remove.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>';
+
+        text.append(title, summary);
+        item.append(text, remove);
         threadListEl.appendChild(item);
       }
     }
@@ -691,6 +1840,151 @@
       return "";
     }
 
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function renderInlineMarkdown(value) {
+      return escapeHtml(value)
+        .replaceAll("&lt;br&gt;", "<br>")
+        .replaceAll("&lt;br/&gt;", "<br>")
+        .replaceAll("&lt;br /&gt;", "<br>")
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/`([^`]+?)`/g, "<code>$1</code>");
+    }
+
+    function isTableSeparator(line) {
+      return /^\s*\|?[\s:-]+\|[\s|:-]*\|?\s*$/.test(line);
+    }
+
+    function isTableRow(line) {
+      return line.trim().startsWith("|") && line.includes("|", 1);
+    }
+
+    function splitTableRow(line) {
+      return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+    }
+
+    function renderTable(lines, startIndex) {
+      const header = splitTableRow(lines[startIndex]);
+      const rows = [];
+      let index = startIndex + 2;
+
+      while (index < lines.length && isTableRow(lines[index])) {
+        rows.push(splitTableRow(lines[index]));
+        index += 1;
+      }
+
+      const headHtml = header.map((cell) => `<th>${renderInlineMarkdown(cell)}</th>`).join("");
+      const bodyHtml = rows.map((row) => {
+        const cells = row.map((cell) => `<td>${renderInlineMarkdown(cell)}</td>`).join("");
+        return `<tr>${cells}</tr>`;
+      }).join("");
+
+      return {
+        html: `<table><thead><tr>${headHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>`,
+        nextIndex: index
+      };
+    }
+
+    function renderMarkdown(value) {
+      const lines = normalizeContent(value).replace(/\r\n/g, "\n").split("\n");
+      const blocks = [];
+      let paragraph = [];
+      let listItems = [];
+      let orderedItems = [];
+
+      function flushParagraph() {
+        if (!paragraph.length) {
+          return;
+        }
+        blocks.push(`<p>${renderInlineMarkdown(paragraph.join("\n"))}</p>`);
+        paragraph = [];
+      }
+
+      function flushList() {
+        if (listItems.length) {
+          blocks.push(`<ul>${listItems.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</ul>`);
+          listItems = [];
+        }
+        if (orderedItems.length) {
+          blocks.push(`<ol>${orderedItems.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</ol>`);
+          orderedItems = [];
+        }
+      }
+
+      for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index];
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+          flushParagraph();
+          flushList();
+          continue;
+        }
+
+        if (isTableRow(line) && index + 1 < lines.length && isTableSeparator(lines[index + 1])) {
+          flushParagraph();
+          flushList();
+          const table = renderTable(lines, index);
+          blocks.push(table.html);
+          index = table.nextIndex - 1;
+          continue;
+        }
+
+        if (/^---+$/.test(trimmed)) {
+          flushParagraph();
+          flushList();
+          blocks.push("<hr>");
+          continue;
+        }
+
+        const heading = /^(#{2,4})\s+(.+)$/.exec(trimmed);
+        if (heading) {
+          flushParagraph();
+          flushList();
+          const level = heading[1].length === 2 ? "h2" : "h3";
+          blocks.push(`<${level}>${renderInlineMarkdown(heading[2])}</${level}>`);
+          continue;
+        }
+
+        const unordered = /^[-*]\s+(.+)$/.exec(trimmed);
+        if (unordered) {
+          flushParagraph();
+          orderedItems = [];
+          listItems.push(unordered[1]);
+          continue;
+        }
+
+        const ordered = /^\d+[.)]\s+(.+)$/.exec(trimmed);
+        if (ordered) {
+          flushParagraph();
+          listItems = [];
+          orderedItems.push(ordered[1]);
+          continue;
+        }
+
+        paragraph.push(line);
+      }
+
+      flushParagraph();
+      flushList();
+      return blocks.join("");
+    }
+
+    function setBubbleContent(bubble, role, content) {
+      if (role === "assistant") {
+        bubble.innerHTML = renderMarkdown(content);
+      } else {
+        bubble.textContent = normalizeContent(content);
+      }
+    }
+
     function appendMessage(role, text, imageUrl) {
       ensureMessagesVisible();
 
@@ -699,11 +1993,16 @@
 
       const meta = document.createElement("div");
       meta.className = "meta";
-      meta.textContent = role === "user" ? LABELS.you : LABELS.assistant;
+      const avatar = document.createElement("span");
+      avatar.className = `avatar ${role === "user" ? "user" : "agent"}`;
+      avatar.textContent = role === "user" ? userInitial() : "M";
+      avatar.title = role === "user" ? (currentUser?.username || LABELS.you) : LABELS.assistant;
+      meta.appendChild(avatar);
 
       const bubble = document.createElement("div");
       bubble.className = "bubble";
-      bubble.textContent = normalizeContent(text);
+      bubble.dataset.raw = normalizeContent(text);
+      setBubbleContent(bubble, role, text);
 
       if (imageUrl) {
         const image = document.createElement("img");
@@ -720,7 +2019,25 @@
       return bubble;
     }
 
+    function userInitial() {
+      const name = currentUser?.username || LABELS.you;
+      return name.slice(0, 1).toUpperCase();
+    }
+
+    function updateProfileAvatar() {
+      const avatar = document.querySelector("#profile-avatar");
+      const name = document.querySelector("#profile-avatar-name");
+      if (!avatar || !name) {
+        return;
+      }
+      avatar.textContent = userInitial();
+      name.textContent = currentUser?.username || "当前用户";
+    }
+
     async function loadThreadMessages(id) {
+      if (!currentUser) {
+        return;
+      }
       clearMessageArea();
       setStatus(LABELS.loadingHistory);
       try {
@@ -737,10 +2054,423 @@
           }
         }
       } catch {
-        // Local thread metadata is still useful even if the checkpoint is unavailable.
+        // Keep local thread metadata even if server-side checkpoint is unavailable.
       } finally {
         setStatus("");
       }
+    }
+
+    async function loadInventory() {
+      if (!currentUser) {
+        return;
+      }
+      try {
+        const response = await fetch(`/api/v1/chef/inventory?thread_id=${encodeURIComponent(kitchenThreadId())}`);
+        if (!response.ok) {
+          throw new Error();
+        }
+        const payload = await response.json();
+        const items = Array.isArray(payload.items) ? payload.items : [];
+        renderInventory(items);
+      } catch {
+        inventoryListEl.innerHTML = `<p>${LABELS.inventoryFailed}</p>`;
+      }
+    }
+
+    function renderInventory(items) {
+      inventoryItems = items.map((item) => ({
+        ...item,
+        original_remaining_percent: clampPercent(item.remaining_percent)
+      }));
+      inventoryListEl.innerHTML = "";
+      if (!inventoryItems.length) {
+        const empty = document.createElement("p");
+        empty.textContent = "暂无库存记录。";
+        inventoryListEl.appendChild(empty);
+        return;
+      }
+
+      for (const item of inventoryItems.slice(0, 12)) {
+        const remaining = item.original_remaining_percent;
+        const row = document.createElement("div");
+        row.className = "memory-item";
+        row.dataset.itemName = item.name;
+        row.dataset.originalRemaining = String(remaining);
+        row.innerHTML = `
+          <div class="memory-main">
+            <strong>${escapeHtml(item.name)}</strong>
+            <span>${escapeHtml(inventoryMeta(item))}</span>
+          </div>
+          <div class="memory-bar" aria-hidden="true">
+            <div class="memory-bar-fill" style="--remaining: ${remaining}%;"></div>
+          </div>
+          <div class="memory-slider-row">
+            <input class="memory-slider" data-inventory-slider type="range" min="0" max="100" step="5" value="${remaining}" aria-label="${escapeHtml(item.name)}剩余比例">
+            <span data-inventory-percent>${remaining ? `剩余 ${remaining}%` : "已用完"}</span>
+          </div>
+        `;
+        row.querySelector("[data-inventory-slider]").addEventListener("input", () => updateInventorySlider(row));
+        inventoryListEl.appendChild(row);
+      }
+    }
+
+    function clampPercent(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) {
+        return 100;
+      }
+      return Math.max(0, Math.min(100, Math.round(number)));
+    }
+
+    function inventoryMeta(item) {
+      if (item.expires_on) {
+        return `${item.expires_estimated ? "预计" : "到期"} ${item.expires_on}`;
+      }
+      return item.quantity || "已记录";
+    }
+
+    function updateInventorySlider(row) {
+      const percent = clampPercent(row.querySelector("[data-inventory-slider]").value);
+      row.querySelector(".memory-bar-fill").style.setProperty("--remaining", `${percent}%`);
+      row.querySelector("[data-inventory-percent]").textContent = percent ? `剩余 ${percent}%` : "已用完";
+    }
+
+    function collectInventoryUsageChanges() {
+      return Array.from(inventoryListEl.querySelectorAll(".memory-item"))
+        .map((row) => {
+          const current = clampPercent(row.querySelector("[data-inventory-slider]").value);
+          const original = clampPercent(row.dataset.originalRemaining);
+          return {
+            name: row.dataset.itemName,
+            amount: `剩余 ${current}%`,
+            remaining_percent: current,
+            remove_from_inventory: current === 0,
+            changed: current !== original
+          };
+        })
+        .filter((item) => item.name && item.changed);
+    }
+
+    async function applyInventoryUsage() {
+      if (!requireAuth()) {
+        return;
+      }
+
+      const items = collectInventoryUsageChanges();
+      if (!items.length) {
+        setStatus("还没有调整食材剩余量。");
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/v1/chef/inventory/consume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            thread_id: kitchenThreadId(),
+            items
+          })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.detail || "库存更新失败。");
+        }
+        renderInventory(payload.items || []);
+        setStatus("食材余量已更新。");
+      } catch (error) {
+        setStatus(error.message || "库存更新失败。");
+      }
+    }
+
+    function splitList(value) {
+      return (value || "")
+        .split(/[,，、\n]/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    function joinList(value) {
+      return Array.isArray(value) ? value.join(", ") : "";
+    }
+
+    function numberOrNull(value) {
+      return value === "" || value === null || value === undefined ? null : Number(value);
+    }
+
+    async function loadHousehold() {
+      if (!currentUser || !authToken) {
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/v1/auth/household", {
+          headers: authHeaders()
+        });
+        if (!response.ok) {
+          throw new Error();
+        }
+        household = await response.json();
+        fillProfileForm(household.profile || {});
+        renderRelativeCards(household.relatives || []);
+      } catch {
+        setStatus("用户档案读取失败。");
+      }
+    }
+
+    function fillProfileForm(profile) {
+      document.querySelector("#profile-age").value = profile.age ?? "";
+      document.querySelector("#profile-gender").value = profile.gender || "";
+      document.querySelector("#profile-height").value = profile.height_cm ?? "";
+      document.querySelector("#profile-weight").value = profile.weight_kg ?? "";
+      document.querySelector("#profile-activity").value = profile.activity_level || "";
+      document.querySelector("#profile-goals").value = joinList(profile.health_goals);
+      document.querySelector("#profile-conditions").value = joinList(profile.conditions);
+      document.querySelector("#profile-allergies").value = joinList(profile.allergies);
+      document.querySelector("#profile-notes").value = profile.notes || "";
+    }
+
+    function emptyRelative() {
+      return {
+        id: "",
+        name: "",
+        relation: "",
+        age: null,
+        conditions: [],
+        allergies: [],
+        dietary_preferences: [],
+        notes: ""
+      };
+    }
+
+    function collectProfile() {
+      return {
+        age: numberOrNull(document.querySelector("#profile-age").value),
+        gender: document.querySelector("#profile-gender").value.trim(),
+        height_cm: numberOrNull(document.querySelector("#profile-height").value),
+        weight_kg: numberOrNull(document.querySelector("#profile-weight").value),
+        activity_level: document.querySelector("#profile-activity").value.trim(),
+        health_goals: splitList(document.querySelector("#profile-goals").value),
+        conditions: splitList(document.querySelector("#profile-conditions").value),
+        allergies: splitList(document.querySelector("#profile-allergies").value),
+        dietary_preferences: [],
+        notes: document.querySelector("#profile-notes").value.trim()
+      };
+    }
+
+    function collectRelatives() {
+      return Array.from(relativeCardsEl.querySelectorAll(".relative-card"))
+        .map((card) => readRelativeCard(card))
+        .filter((relative) => relative.name || relative.relation || relative.age || relative.conditions.length || relative.allergies.length || relative.dietary_preferences.length || relative.notes);
+    }
+
+    async function saveHousehold(nextHousehold) {
+      if (!requireAuth()) {
+        return;
+      }
+
+      const response = await fetch("/api/v1/auth/household", {
+        method: "PUT",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(nextHousehold)
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.detail || "档案保存失败。");
+      }
+      household = payload;
+      fillProfileForm(household.profile || {});
+      renderRelativeCards(household.relatives || []);
+      setStatus("档案已保存，后续配餐会参考这些信息。");
+      profileOverlay.classList.remove("active");
+    }
+
+    function renderRelativeCards(relatives) {
+      relativeCardsEl.innerHTML = "";
+      const list = relatives.length ? relatives : [emptyRelative()];
+      list.forEach((relative, index) => addRelativeCard(relative, index));
+      renderMealMembers();
+    }
+
+    function renderMealMembers() {
+      const relatives = household.relatives || [];
+      mealMembersEl.innerHTML = "";
+      if (!relatives.length) {
+        mealMembersEl.classList.remove("active");
+        return;
+      }
+      mealMembersEl.classList.add("active");
+      const label = document.createElement("span");
+      label.textContent = "本次用餐";
+      mealMembersEl.appendChild(label);
+      relatives.forEach((relative) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = `member-chip${absentRelativeIds.has(relative.id) ? " inactive" : ""}`;
+        chip.dataset.relativeId = relative.id;
+        chip.innerHTML = `<span class="relative-avatar ${relativeAvatarClass(relative.relation)}" style="width: 24px; height: 24px; font-size: 12px;">${escapeHtml(relativeAvatarText(relative))}</span>${escapeHtml(relative.name || "亲人")}`;
+        chip.title = "点暗表示这位亲人本次不来吃饭";
+        chip.addEventListener("click", () => {
+          if (absentRelativeIds.has(relative.id)) {
+            absentRelativeIds.delete(relative.id);
+          } else {
+            absentRelativeIds.add(relative.id);
+          }
+          renderMealMembers();
+        });
+        mealMembersEl.appendChild(chip);
+      });
+    }
+
+    function mealMemberContext() {
+      const relatives = household.relatives || [];
+      if (!relatives.length) {
+        return "";
+      }
+      const absent = relatives.filter((relative) => absentRelativeIds.has(relative.id)).map((relative) => relative.name);
+      const attending = relatives.filter((relative) => !absentRelativeIds.has(relative.id)).map((relative) => relative.name);
+      if (!absent.length) {
+        return "本次用餐成员：本人和所有已录入亲人都来吃饭。";
+      }
+      return `本次用餐成员：本人${attending.length ? `、${attending.join("、")}` : ""}；本次不来吃饭：${absent.join("、")}。请按实际用餐成员安排菜量和忌口。`;
+    }
+
+    function addRelativeCard(relative = emptyRelative(), index = relativeCardsEl.children.length, options = {}) {
+      const isDraft = Boolean(options.draft);
+      const card = document.createElement("div");
+      card.className = `relative-card${isDraft ? " draft" : ""}`;
+      card.dataset.relativeId = relative.id || "";
+      card.dataset.editing = "false";
+      card.innerHTML = `
+        <div class="relative-card-head">
+          <strong>${isDraft ? "新增亲人" : `亲人 ${index + 1}`}</strong>
+          <button class="thread-delete" type="button" title="删除亲人" style="opacity: 1;">
+            <svg viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
+        </div>
+        <div class="relative-summary">
+          <span class="relative-avatar ${relativeAvatarClass(relative.relation)}">${escapeHtml(relativeAvatarText(relative))}</span>
+          <div class="relative-summary-title">${escapeHtml(relative.name || "未填写姓名")}</div>
+          <div>${escapeHtml(relative.relation || "关系待补充")}${relative.age ? ` · ${relative.age} 岁` : ""}</div>
+          <div>${escapeHtml(summaryTags(relative))}</div>
+        </div>
+        <div class="relative-editor">
+          <div class="profile-grid">
+            <label>姓名<input data-relative-field="name" type="text" value="${escapeHtml(relative.name || "")}"></label>
+            <label>关系<input data-relative-field="relation" type="text" value="${escapeHtml(relative.relation || "")}" placeholder="父亲/母亲/伴侣"></label>
+            <label>年龄<input data-relative-field="age" type="number" min="1" max="120" value="${relative.age ?? ""}"></label>
+          </div>
+          <label>身体状况<input data-relative-field="conditions" type="text" value="${escapeHtml(joinList(relative.conditions))}" placeholder="控糖, 高血压等"></label>
+          <label>过敏/忌口<input data-relative-field="allergies" type="text" value="${escapeHtml(joinList(relative.allergies))}" placeholder="香菜, 海鲜"></label>
+          <label>饮食偏好<input data-relative-field="preferences" type="text" value="${escapeHtml(joinList(relative.dietary_preferences))}" placeholder="清淡, 软烂"></label>
+          <label>备注<textarea data-relative-field="notes">${escapeHtml(relative.notes || "")}</textarea></label>
+          ${isDraft ? '<div class="relative-card-actions"><button class="panel-button" data-confirm-relative="true" type="button" style="width: auto;">确认亲人</button></div>' : ""}
+        </div>
+      `;
+      card.querySelector("button").addEventListener("click", () => {
+        card.remove();
+        if (!relativeCardsEl.children.length) {
+          addRelativeCard(emptyRelative(), 0);
+        }
+        refreshRelativeCardTitles();
+      });
+      card.addEventListener("click", (event) => {
+        if (event.target.closest("button") || event.target.closest("input") || event.target.closest("textarea")) {
+          return;
+        }
+        activateRelativeCard(card);
+      });
+      card.querySelectorAll("input, textarea").forEach((field) => {
+        field.addEventListener("input", () => updateRelativeSummary(card));
+      });
+      const confirmButton = card.querySelector("[data-confirm-relative]");
+      if (confirmButton) {
+        confirmButton.addEventListener("click", () => confirmRelativeCard(card));
+      }
+      relativeCardsEl.appendChild(card);
+      refreshRelativeCardTitles();
+    }
+
+    function confirmRelativeCard(card) {
+      const relative = readRelativeCard(card);
+      if (!relative.name) {
+        setStatus("请先填写亲人姓名，再确认。");
+        return;
+      }
+      card.classList.remove("draft");
+      card.classList.add("active");
+      const actions = card.querySelector(".relative-card-actions");
+      if (actions) {
+        actions.remove();
+      }
+      updateRelativeSummary(card);
+      refreshRelativeCardTitles();
+      setStatus("亲人卡片已生成，记得保存个人主页。");
+    }
+
+    function activateRelativeCard(card) {
+      relativeCardsEl.querySelectorAll(".relative-card").forEach((item) => {
+        item.classList.toggle("active", item === card);
+      });
+    }
+
+    function updateRelativeSummary(card) {
+      const relative = readRelativeCard(card);
+      const avatar = card.querySelector(".relative-avatar");
+      if (avatar) {
+        avatar.textContent = relativeAvatarText(relative);
+        avatar.className = `relative-avatar ${relativeAvatarClass(relative.relation)}`;
+      }
+      card.querySelector(".relative-summary-title").textContent = relative.name || "未填写姓名";
+      const meta = `${relative.relation || "关系待补充"}${relative.age ? ` · ${relative.age} 岁` : ""}`;
+      card.querySelector(".relative-summary").children[1].textContent = meta;
+      card.querySelector(".relative-summary").children[2].textContent = summaryTags(relative);
+    }
+
+    function relativeAvatarText(relative) {
+      const relation = relative.relation || "";
+      const name = relative.name || "";
+      if (relation.includes("父")) return "父";
+      if (relation.includes("母") || relation.includes("妈")) return "母";
+      if (relation.includes("伴侣") || relation.includes("妻") || relation.includes("夫")) return "伴";
+      if (relation.includes("子") || relation.includes("女") || relation.includes("孩")) return "孩";
+      if (name) return name.slice(0, 1).toUpperCase();
+      return "亲";
+    }
+
+    function relativeAvatarClass(relation = "") {
+      if (relation.includes("父") || relation.includes("母") || relation.includes("妈")) return "parent";
+      if (relation.includes("伴侣") || relation.includes("妻") || relation.includes("夫")) return "partner";
+      if (relation.includes("子") || relation.includes("女") || relation.includes("孩")) return "child";
+      if (relation.includes("爷") || relation.includes("奶") || relation.includes("外公") || relation.includes("外婆")) return "elder";
+      return "";
+    }
+
+    function summaryTags(relative) {
+      const tags = [
+        ...(relative.conditions || []),
+        ...(relative.allergies || []),
+        ...(relative.dietary_preferences || [])
+      ].slice(0, 4);
+      return tags.length ? tags.join(" · ") : "点击补充饮食情况";
+    }
+
+    function readRelativeCard(card) {
+      return {
+        id: card.dataset.relativeId || "",
+        name: card.querySelector("[data-relative-field='name']").value.trim(),
+        relation: card.querySelector("[data-relative-field='relation']").value.trim(),
+        age: numberOrNull(card.querySelector("[data-relative-field='age']").value),
+        conditions: splitList(card.querySelector("[data-relative-field='conditions']").value),
+        allergies: splitList(card.querySelector("[data-relative-field='allergies']").value),
+        dietary_preferences: splitList(card.querySelector("[data-relative-field='preferences']").value),
+        notes: card.querySelector("[data-relative-field='notes']").value.trim()
+      };
+    }
+
+    function refreshRelativeCardTitles() {
+      Array.from(relativeCardsEl.querySelectorAll(".relative-card-head strong")).forEach((title, index) => {
+        title.textContent = `亲人 ${index + 1}`;
+      });
     }
 
     function updateSelectedFile(file) {
@@ -758,34 +2488,40 @@
 
     function resizeTextarea() {
       messageInput.style.height = "auto";
-      messageInput.style.height = `${Math.min(messageInput.scrollHeight, 132)}px`;
+      messageInput.style.height = `${Math.min(messageInput.scrollHeight, 148)}px`;
     }
 
     async function uploadImage(file) {
       setStatus(LABELS.uploadPreparing);
-      const presignUrl = `/api/v1/oss/presign?filename=${encodeURIComponent(file.name)}`;
-      const presignResponse = await fetch(presignUrl);
-      const presignPayload = await presignResponse.json().catch(() => ({}));
+      const formData = new FormData();
+      formData.append("file", file);
+      setStatus(LABELS.uploading);
 
-      if (!presignResponse.ok) {
-        throw new Error(presignPayload.detail || LABELS.uploadFailedUrl);
+      let uploadResponse;
+      try {
+        uploadResponse = await fetch("/api/v1/oss/upload", {
+          method: "POST",
+          headers: authHeaders(),
+          body: formData
+        });
+      } catch {
+        throw new Error("图片上传失败，请确认后端服务正在运行。");
       }
 
-      setStatus(LABELS.uploading);
-      const uploadResponse = await fetch(presignPayload.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": presignPayload.contentType },
-        body: file
-      });
+      const uploadPayload = await uploadResponse.json().catch(() => ({}));
 
       if (!uploadResponse.ok) {
-        throw new Error(LABELS.uploadFailed);
+        throw new Error(uploadPayload.detail || LABELS.uploadFailed);
       }
 
-      return presignPayload.accessUrl;
+      return uploadPayload.accessUrl;
     }
 
     async function sendMessage() {
+      if (!requireAuth()) {
+        return;
+      }
+
       const text = messageInput.value.trim();
       if (!text && !selectedFile) {
         setStatus(LABELS.needInput);
@@ -798,6 +2534,7 @@
       const fileForMessage = selectedFile;
       const localPreview = fileForMessage ? URL.createObjectURL(fileForMessage) : "";
       const userText = text || LABELS.imagePrompt;
+      const memberContext = mealMemberContext();
       appendMessage("user", userText, localPreview);
       updateCurrentThread(userText);
 
@@ -808,14 +2545,22 @@
       const assistantBubble = appendMessage("assistant", "");
 
       try {
-        const imageUrl = fileForMessage ? await uploadImage(fileForMessage) : null;
+        let imageUrl = null;
+        if (fileForMessage) {
+          try {
+            imageUrl = await uploadImage(fileForMessage);
+          } catch (error) {
+            throw new Error(error.message === "Failed to fetch" ? "图片上传失败，请检查 OSS 跨域 CORS 配置或网络连接。" : (error.message || LABELS.uploadFailed));
+          }
+        }
         setStatus(LABELS.generating);
 
         const response = await fetch("/api/v1/chat/stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({
             message: userText,
+            meal_context: memberContext,
             image_url: imageUrl,
             thread_id: threadId
           }),
@@ -835,19 +2580,22 @@
           if (done) {
             break;
           }
-
-          assistantBubble.textContent += decoder.decode(value, { stream: true });
+          assistantBubble.dataset.raw = `${assistantBubble.dataset.raw || ""}${decoder.decode(value, { stream: true })}`;
+          setBubbleContent(assistantBubble, "assistant", assistantBubble.dataset.raw);
           scrollToBottom();
         }
 
-        assistantBubble.textContent += decoder.decode();
-        updateCurrentThread(assistantBubble.textContent);
+        assistantBubble.dataset.raw = `${assistantBubble.dataset.raw || ""}${decoder.decode()}`;
+        setBubbleContent(assistantBubble, "assistant", assistantBubble.dataset.raw);
+        updateCurrentThread(assistantBubble.dataset.raw);
         setStatus("");
+        loadInventory();
       } catch (error) {
         if (error.name === "AbortError") {
           setStatus(LABELS.stopped);
         } else {
-          assistantBubble.textContent = error.message || LABELS.genericFailed;
+          assistantBubble.dataset.raw = error.message === "Failed to fetch" ? "请求后端失败，请确认 FastAPI 服务正在运行，并刷新页面后重试。" : (error.message || LABELS.genericFailed);
+          setBubbleContent(assistantBubble, "assistant", assistantBubble.dataset.raw);
           setStatus("");
         }
       } finally {
@@ -861,6 +2609,10 @@
     }
 
     async function clearCurrentChat() {
+      if (!requireAuth()) {
+        return;
+      }
+
       try {
         await fetch(`/api/v1/chat/messages?thread_id=${encodeURIComponent(threadId)}`, { method: "DELETE" });
       } catch {
@@ -876,16 +2628,110 @@
       setStatus("");
     }
 
+    async function deleteThread(id) {
+      if (!requireAuth()) {
+        return;
+      }
+
+      try {
+        await fetch(`/api/v1/chat/messages?thread_id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      } catch {
+        // Local deletion still keeps the user's sidebar clean if server history is already gone.
+      }
+
+      threads = threads.filter((thread) => thread.id !== id);
+      if (!threads.length) {
+        const nextId = createThreadId();
+        threads.unshift(createThread(nextId));
+      }
+      if (threadId === id) {
+        threadId = threads[0].id;
+        localStorage.setItem(currentThreadKey(), threadId);
+        clearMessageArea();
+        loadThreadMessages(threadId);
+        loadInventory();
+      }
+      saveThreads();
+      renderThreadList();
+    }
+
     function startNewChat() {
+      if (!requireAuth()) {
+        return;
+      }
+
       threadId = createThreadId();
       threads.unshift(createThread(threadId));
       saveThreads();
-      localStorage.setItem(CURRENT_THREAD_KEY, threadId);
+      localStorage.setItem(currentThreadKey(), threadId);
       renderThreadList();
       clearMessageArea();
+      loadInventory();
       setStatus("");
       messageInput.focus();
     }
+
+    async function submitAuth(event) {
+      event.preventDefault();
+      authMessage.textContent = "";
+      authSubmit.disabled = true;
+
+      try {
+        const response = await fetch(`/api/v1/auth/${authMode}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: authUsername.value.trim(),
+            password: authPassword.value
+          })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.detail || (authMode === "login" ? LABELS.loginFailed : LABELS.registerFailed));
+        }
+        setCurrentUser(payload.user, payload.access_token);
+        authPassword.value = "";
+        setStatus("");
+      } catch (error) {
+        authMessage.textContent = error.message || (authMode === "login" ? LABELS.loginFailed : LABELS.registerFailed);
+      } finally {
+        authSubmit.disabled = false;
+      }
+    }
+
+    async function logout() {
+      if (authToken) {
+        try {
+          await fetch("/api/v1/auth/logout", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${authToken}` }
+          });
+        } catch {
+          // Local logout should still work if the token has already expired.
+        }
+      }
+      clearAuthState();
+    }
+
+    async function submitProfile(event) {
+      event.preventDefault();
+      try {
+        await saveHousehold({
+          profile: collectProfile(),
+          relatives: collectRelatives()
+        });
+      } catch (error) {
+        setStatus(error.message || "档案保存失败。");
+      }
+    }
+
+    document.querySelectorAll(".prompt-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        messageInput.value = card.dataset.prompt || "";
+        resizeTextarea();
+        messageInput.focus();
+      });
+    });
 
     pickImageBtn.addEventListener("click", () => imageInput.click());
     removeFileBtn.addEventListener("click", () => updateSelectedFile(null));
@@ -904,15 +2750,23 @@
     });
 
     threadListEl.addEventListener("click", (event) => {
+      const deleteTarget = event.target.closest("[data-delete-thread]");
+      if (deleteTarget) {
+        event.stopPropagation();
+        deleteThread(deleteTarget.dataset.deleteThread);
+        return;
+      }
+
       const item = event.target.closest(".thread-item");
       if (!item || abortController) {
         return;
       }
 
       threadId = item.dataset.threadId;
-      localStorage.setItem(CURRENT_THREAD_KEY, threadId);
+      localStorage.setItem(currentThreadKey(), threadId);
       renderThreadList();
       loadThreadMessages(threadId);
+      loadInventory();
     });
 
     sendBtn.addEventListener("click", sendMessage);
@@ -925,6 +2779,29 @@
     newChatBtn.addEventListener("click", startNewChat);
     clearChatBtn.addEventListener("click", clearCurrentChat);
     refreshHistoryBtn.addEventListener("click", () => loadThreadMessages(threadId));
+    refreshInventoryBtn.addEventListener("click", loadInventory);
+    applyInventoryUsageBtn.addEventListener("click", applyInventoryUsage);
+    authForm.addEventListener("submit", submitAuth);
+    loginTab.addEventListener("click", () => setAuthMode("login"));
+    registerTab.addEventListener("click", () => setAuthMode("register"));
+    logoutBtn.addEventListener("click", logout);
+    profileForm.addEventListener("submit", submitProfile);
+    addRelativeBtn.addEventListener("click", () => {
+      addRelativeCard(emptyRelative(), relativeCardsEl.children.length, { draft: true });
+      activateRelativeCard(relativeCardsEl.lastElementChild);
+    });
+    userPill.addEventListener("click", () => {
+      if (requireAuth()) {
+        profileOverlay.classList.add("active");
+      }
+    });
+    closeProfileBtn.addEventListener("click", () => profileOverlay.classList.remove("active"));
+    cancelProfileBtn.addEventListener("click", () => profileOverlay.classList.remove("active"));
+    profileOverlay.addEventListener("click", (event) => {
+      if (event.target === profileOverlay) {
+        profileOverlay.classList.remove("active");
+      }
+    });
   </script>
 </body>
 </html>

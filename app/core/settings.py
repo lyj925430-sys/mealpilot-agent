@@ -52,6 +52,7 @@ class Settings:
     database_dir: Path = Path(_get_env("DATABASE_DIR", "database"))
     memory_db_path: Path = database_dir / _get_env("MEMORY_DB_NAME", "memory.db")
     chef_memory_db_path: Path = database_dir / _get_env("CHEF_MEMORY_DB_NAME", "chef_memory.db")
+    auth_db_path: Path = database_dir / _get_env("AUTH_DB_NAME", "auth.db")
 
     @property
     def llm_ready(self) -> bool:

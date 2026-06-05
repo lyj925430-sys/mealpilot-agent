@@ -1,17 +1,63 @@
+import re
 import sqlite3
 from typing import Any
 
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain.tools import tool
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, SystemMessage
 from langchain_tavily import TavilySearch
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 from app.common.logger import logger
 from app.core.settings import settings
-from app.models.schemas import MealPlanRequest
-from app.services.meal_planner import chef_memory_store, generate_meal_plan, inventory_context
+from app.models.schemas import (
+    ConsumedIngredient,
+    CookingSessionStartRequest,
+    IngredientItem,
+    IngredientSubstitutionRequest,
+    MealPlanRequest,
+    NutritionEstimateRequest,
+)
+from app.services.meal_planner import (
+    chef_memory_store,
+    estimate_nutrition,
+    generate_meal_plan,
+    inventory_context,
+    suggest_substitutions,
+)
+from app.services.auth_service import household_context
+
+
+KNOWN_INGREDIENTS = (
+    "三文鱼",
+    "生菜",
+    "彩椒",
+    "鸡蛋",
+    "番茄",
+    "西红柿",
+    "鸡胸肉",
+    "鸡肉",
+    "牛肉",
+    "猪肉",
+    "羊肉",
+    "鱼",
+    "虾",
+    "豆腐",
+    "土豆",
+    "胡萝卜",
+    "洋葱",
+    "菠菜",
+    "青菜",
+    "蘑菇",
+    "香菇",
+    "米饭",
+    "面条",
+)
+
+REQUEST_PATTERNS = (
+    re.compile(r"(?:想吃|想做|想煮|想炒|想弄|要吃|要做|做点|吃点)([^，。！？\n]{1,30})"),
+)
 
 
 SYSTEM_PROMPT = """
@@ -32,12 +78,93 @@ SYSTEM_PROMPT = """
 CONFIG_ERROR_MESSAGE = "\u670d\u52a1\u914d\u7f6e\u4e0d\u5b8c\u6574\uff0c\u8bf7\u5148\u68c0\u67e5 DASHSCOPE_API_KEY \u548c BASE_URL\u3002"
 AGENT_ERROR_MESSAGE = "\u4fe1\u606f\u68c0\u7d22\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\uff0c\u6216\u8005\u5148\u624b\u52a8\u8f93\u5165\u98df\u6750\u6e05\u5355\u3002"
 
+def _requested_food_terms(prompt: str) -> list[str]:
+    terms = [ingredient for ingredient in KNOWN_INGREDIENTS if ingredient in prompt]
+    if terms:
+        return sorted(set(terms), key=len, reverse=True)
+
+    extracted = []
+    for pattern in REQUEST_PATTERNS:
+        extracted.extend(match.group(1).strip(" 了吧吗呢呀～~，。！？") for match in pattern.finditer(prompt))
+    return [term for term in dict.fromkeys(extracted) if term]
+
+
+def _matches_inventory(term: str, inventory_names: list[str]) -> bool:
+    return any(term in name or name in term for name in inventory_names)
+
+
+def _inventory_guard_result(prompt: str, kitchen_thread_id: str) -> dict[str, list[str]]:
+    requested = _requested_food_terms(prompt)
+    if not requested:
+        return {"requested": [], "missing": [], "available": []}
+
+    inventory = chef_memory_store.list_inventory(kitchen_thread_id)
+    available_names = [
+        item["name"]
+        for item in inventory
+        if int(item.get("remaining_percent", 100)) > 0
+    ]
+    missing = [term for term in requested if not _matches_inventory(term, available_names)]
+    return {"requested": requested, "missing": missing, "available": available_names}
+
+
+def _inventory_guard_context(prompt: str, kitchen_thread_id: str) -> str:
+    result = _inventory_guard_result(prompt, kitchen_thread_id)
+    requested = result["requested"]
+    missing = result["missing"]
+    available_names = result["available"]
+    if not missing:
+        return ""
+
+    available = "、".join(available_names) if available_names else "暂无可用食材"
+    return (
+        "库存核验结果:\n"
+        f"- 用户本次点名想吃/做: {'、'.join(requested)}\n"
+        f"- 当前食材余量中没有: {'、'.join(missing)}\n"
+        f"- 当前可用食材: {available}\n"
+        "强制要求: 回答时必须先说明这些点名食材当前没有库存，不能直接做成该菜；"
+        "然后再基于当前可用食材给替代菜，或把缺少食材放到可选加购建议里。"
+    )
+
+
+def _inventory_guard_reply(prompt: str, kitchen_thread_id: str) -> str:
+    result = _inventory_guard_result(prompt, kitchen_thread_id)
+    missing = result["missing"]
+    if not missing:
+        return ""
+
+    available_names = result["available"]
+    available = "、".join(available_names[:8]) if available_names else "暂无可用食材"
+    optional_buy = "、".join(missing)
+    if available_names:
+        return (
+            f"当前食材余量里没有 {optional_buy}，所以我不能直接按“{prompt}”给你安排成可直接做的菜。\n\n"
+            f"现在还能用的食材有：{available}。\n\n"
+            f"你可以先用现有食材做一道替代菜；如果你就是想吃 {optional_buy}，那它只能放到可选加购里。"
+        )
+
+    return (
+        f"当前食材余量里没有 {optional_buy}，而且目前没有可用库存记录，所以不能直接安排这道菜。\n\n"
+        f"如果你已经买了 {optional_buy}，可以先上传图片或把它加入食材余量；否则我只能把它作为可选加购建议。"
+    )
+
+
 SYSTEM_PROMPT += """
 
 Agent upgrade:
 - If the user asks for multi-day menus, inventory consumption, shopping lists, or what to eat this week, use kitchen_memory and meal_plan first.
 - Prefer ingredients that expire soon. Clearly separate ingredients already in the kitchen from ingredients that need to be bought.
 - Treat saved inventory and preferences as long-term kitchen memory for the current thread_id.
+- The core recommendation must be cookable with current ingredients from the image or saved inventory. Do not make the main dish depend on newly purchased ingredients unless the user explicitly asks for shopping.
+- Treat the current saved inventory from kitchen_memory as the authoritative source. It overrides older chat history, older uploaded images, and earlier assistant replies.
+- Before giving a recipe for a dish named by the user, compare the dish's key ingredients with current saved inventory. If a key ingredient is not in current inventory, or has been marked used up, say clearly that it is not currently available; then offer inventory-based alternatives, substitutes, or an optional shopping suggestion. Do not present that dish as directly cookable unless the user says they will buy the missing ingredients.
+- Put shopping or missing items only in an optional upgrade section. Make it clear that these are nice-to-have suggestions, not required for the recommended dish.
+- Use update_inventory when the user says they bought or added ingredients.
+- When the user uploads a food or fridge image, first identify visible ingredients and call update_inventory for the kitchen memory thread_id before recommending dishes.
+- Use consume_inventory only after the user confirms ingredients were used, and do not pretend exact quantity parsing when the user gave vague amounts.
+- Use substitute_ingredient for missing ingredients. Prefer substitutes already in inventory and avoid allergies or disliked ingredients.
+- Use estimate_meal_nutrition for lightweight meal planning estimates, not medical advice.
+- Use start_cooking_steps and cooking_step when the user wants step-by-step cooking guidance.
 """
 
 
@@ -75,6 +202,80 @@ def meal_plan(thread_id: str, days: int = 3) -> Any:
     return generate_meal_plan(MealPlanRequest(thread_id=thread_id, days=days))
 
 
+@tool
+def update_inventory(
+    thread_id: str,
+    name: str,
+    quantity: str = "",
+    category: str = "",
+    expires_on: str | None = None,
+    notes: str = "",
+) -> Any:
+    """Add or update one ingredient in saved kitchen inventory."""
+    item = IngredientItem(
+        name=name,
+        quantity=quantity,
+        category=category,
+        expires_on=expires_on,
+        notes=notes,
+    )
+    return {"items": chef_memory_store.upsert_inventory(thread_id, [item])}
+
+
+@tool
+def consume_inventory(
+    thread_id: str,
+    name: str,
+    amount: str = "",
+    recipe_name: str = "",
+    remove_from_inventory: bool = False,
+    remaining_percent: int | None = None,
+) -> Any:
+    """Record that one ingredient was consumed after cooking."""
+    item = ConsumedIngredient(
+        name=name,
+        amount=amount,
+        remove_from_inventory=remove_from_inventory,
+        remaining_percent=remaining_percent,
+    )
+    return chef_memory_store.consume_inventory(thread_id, [item], recipe_name)
+
+
+@tool
+def substitute_ingredient(thread_id: str, ingredient: str, dish: str = "") -> Any:
+    """Suggest practical substitutes for a missing ingredient."""
+    return suggest_substitutions(
+        IngredientSubstitutionRequest(thread_id=thread_id, ingredient=ingredient, dish=dish)
+    )
+
+
+@tool
+def estimate_meal_nutrition(thread_id: str, ingredients: list[dict[str, str]], servings: int = 1) -> Any:
+    """Estimate calories and macros for a list of meal ingredients."""
+    parsed = [
+        ConsumedIngredient(name=item.get("name", ""), amount=item.get("amount", ""))
+        for item in ingredients
+        if item.get("name")
+    ]
+    return estimate_nutrition(
+        NutritionEstimateRequest(thread_id=thread_id, ingredients=parsed, servings=servings)
+    )
+
+
+@tool
+def start_cooking_steps(thread_id: str, recipe_name: str, steps: list[str]) -> Any:
+    """Start a step-by-step cooking session for the current thread."""
+    return chef_memory_store.start_cooking_session(
+        CookingSessionStartRequest(thread_id=thread_id, recipe_name=recipe_name, steps=steps)
+    )
+
+
+@tool
+def cooking_step(thread_id: str, action: str = "next") -> Any:
+    """Move through the current cooking session. action is next, previous, current, or finish."""
+    return chef_memory_store.advance_cooking_session(thread_id, action)
+
+
 def _create_agent():
     missing = []
     if not settings.llm_ready:
@@ -93,7 +294,17 @@ def _create_agent():
 
     return create_agent(
         model=model,
-        tools=[web_search, kitchen_memory, meal_plan],
+        tools=[
+            web_search,
+            kitchen_memory,
+            meal_plan,
+            update_inventory,
+            consume_inventory,
+            substitute_ingredient,
+            estimate_meal_nutrition,
+            start_cooking_steps,
+            cooking_step,
+        ],
         checkpointer=checkpointer,
         system_prompt=SYSTEM_PROMPT,
     )
@@ -102,7 +313,13 @@ def _create_agent():
 agent = _create_agent()
 
 
-async def search_recipes(prompt: str, image: str | None, thread_id: str):
+async def search_recipes(
+    prompt: str,
+    image: str | None,
+    thread_id: str,
+    user_id: str | None = None,
+    meal_context: str = "",
+):
     logger.info("[user] thread_id=%s image=%s prompt=%s", thread_id, bool(image), prompt)
 
     if agent is None:
@@ -110,9 +327,30 @@ async def search_recipes(prompt: str, image: str | None, thread_id: str):
         return
 
     try:
-        context = inventory_context(thread_id)
-        if context:
-            prompt = f"当前 thread_id: {thread_id}\n{context}\n\n当前用户请求:\n{prompt}"
+        kitchen_thread_id = f"kitchen-{user_id}" if user_id else thread_id
+        guard_reply = _inventory_guard_reply(prompt, kitchen_thread_id)
+        if guard_reply and not image:
+            yield guard_reply
+            return
+
+        context = inventory_context(kitchen_thread_id)
+        inventory_guard = _inventory_guard_context(prompt, kitchen_thread_id)
+        user_context = household_context(user_id)
+        context_parts = [part for part in (context, inventory_guard, user_context, meal_context.strip()) if part]
+        messages = []
+        if context_parts:
+            joined_context = "\n\n".join(context_parts)
+            messages.append(
+                SystemMessage(
+                    content=(
+                        f"当前对话 thread_id: {thread_id}\n"
+                        f"厨房记忆 thread_id: {kitchen_thread_id}\n"
+                        f"{joined_context}\n\n"
+                        "这些是系统提供的用户上下文，仅用于个性化饮食规划，不要在回答中原样复述。"
+                        " 如果需要更新库存，请使用厨房记忆 thread_id，而不是对话 thread_id。"
+                    )
+                )
+            )
 
         if not image:
             message = HumanMessage(content=prompt)
@@ -123,9 +361,10 @@ async def search_recipes(prompt: str, image: str | None, thread_id: str):
                     {"type": "text", "text": prompt},
                 ]
             )
+        messages.append(message)
 
         for chunk, _metadata in agent.stream(
-            {"messages": [message]},
+            {"messages": messages},
             {"configurable": {"thread_id": thread_id}},
             stream_mode="messages",
         ):
@@ -144,6 +383,12 @@ def clear_messages(thread_id: str) -> None:
 
 def _message_content(content: Any) -> Any:
     if isinstance(content, str):
+        marker = "当前用户请求:"
+        if marker in content:
+            content = content.rsplit(marker, 1)[-1].strip()
+        member_marker = "本次用餐成员："
+        if member_marker in content:
+            content = content.split(member_marker, 1)[0].strip()
         return content
     return content
 
